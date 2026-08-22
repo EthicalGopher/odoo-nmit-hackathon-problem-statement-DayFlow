@@ -1,78 +1,102 @@
-# React + TypeScript + Vite
+# Dayflow — Human Resource Management System (HRMS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> *Every workday, perfectly aligned.*
 
-Currently, two official plugins are available:
+**Dayflow** is a complete, production-grade Human Resource Management System. It features an editorial, dark warm-charcoal aesthetic with custom typography (**Crimson Text**, **Carme**, and **Crafty Girls**), deterministic SVG avatar generation via **`react-nice-avatar`**, state management powered by **`zustand`**, and JWT HTTP-Only cookie authentication backed by a **GoFiber v3** REST server.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Dayflow offers dual presentation views: **Interactive Visual Canvas View** and **Structured Directory Table View** sharing the exact same backend API and PostgreSQL data model.
 
-## React Compiler
+---
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## 🚀 Highlights & Key Capabilities
 
-Note: This will impact Vite dev & build performances.
+1. **Deterministic Seeded Avatars (`react-nice-avatar`)**:
+   - Every employee profile automatically generates a unique SVG avatar derived from their full name using `react-nice-avatar` and `genConfig(name)`.
 
-## Expanding the ESLint configuration
+2. **State Management (`zustand`)**:
+   - Centralized, high-performance state management using Zustand stores (`useAuthStore`, `useViewModeStore`).
+   - Synchronous local session restoration to eliminate redirect flashes on page refresh.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+3. **Secure Authentication (JWT HTTP-Only Cookies)**:
+   - Tokens signed using `golang-jwt/jwt/v5` and stored in `HTTPOnly`, `SameSite=Lax` browser cookies.
+   - Endpoint `/api/auth/me` validates live JWT tokens upon page initialization.
+   - Access Role Switcher (`HR Manager` vs `Employee`) and Employee Context Switcher in the topbar for instant perspective testing.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+4. **Dual Presentation Views**:
+   - **Interactive Visual Canvas View**: Visual node topology for Leave Approvals, Employee Journey mapping, and HR pipeline review. Clicking any node opens an interactive `WorkflowSidePanel` for node inspection and quick HR approval/rejection.
+   - **Structured Directory Table View**: Clean, production-ready tables, tabbed sections, modals, and status badges.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+5. **Attendance Management & Live Clock**:
+   - Hero attendance check widget featuring a ticking digital clock (`7xl font-mono text-[#E8E3DD]`), live date banner, status pill badge, prominent Check In / Check Out button, and active work timer cards.
+   - Weekly (Monday–Sunday) and daily log views tracking Present, Absent, Half-day, and Leave states.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+6. **Leave Approvals & Payroll Visibility**:
+   - Available leave counters (Paid, Sick, Unpaid) with auto-calculated working day durations.
+   - Salary component matrix: Basic 50%, HRA 40%, Standard Allowance, Performance Bonus 8%, LTA 5%, Fixed Allowance, PF deduction 12%, Professional Tax $200.
+   - Official printable Salary Pay Slip preview modal.
 
+---
+
+## 🛠️ Complete Tech Stack
+
+### Frontend
+- **Framework**: React 19 + TypeScript (Vite build engine)
+- **State Management**: Zustand (`zustand`)
+- **Avatar Engine**: `react-nice-avatar` (Seeded by employee name)
+- **Routing & Data Queries**: React Router v7 & TanStack Query v5
+- **Visual Workflows**: React Flow (`@xyflow/react`)
+- **Styling**: Tailwind CSS v4, React Icons (`react-icons`)
+- **Charts & Data Visualization**: Recharts (`recharts`)
+
+### Backend
+- **Server Framework**: GoFiber v3 (`github.com/gofiber/fiber/v3`)
+- **Authentication**: JWT Cookies via `github.com/golang-jwt/jwt/v5`
+- **Database & ORM**: PostgreSQL with SQLite fallback via GORM (`gorm.io/gorm`)
+- **Containerization**: Docker & Docker Compose (`docker-compose.yml`)
+
+---
+
+## 💻 Installation & Quickstart
+
+### Method 1: Docker Compose (Full Stack)
+
+Run the entire application (PostgreSQL + GoFiber v3 Backend + React Frontend) with a single command:
+
+```bash
+docker compose up --build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **Frontend Application**: `http://localhost:3000`
+- **GoFiber v3 Backend API**: `http://localhost:8080`
+- **PostgreSQL Database**: Port `5432`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Method 2: Local Development
 
+#### 1. Backend Setup (GoFiber v3)
+
+```bash
+cd backend
+go run main.go
 ```
-# DayFlow
+*The backend automatically initializes SQLite/PostgreSQL schema auto-migrations and seeds initial employee records.*
+
+#### 2. Frontend Setup (React + Vite)
+
+```bash
+# In the project root directory
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
+
+---
+
+## 🎨 Design & Typography System
+
+- **Crimson Text**: Primary headings and editorial titles.
+- **Carme**: Clean UI text, dashboard labels, and table content.
+- **Crafty Girls**: Handwritten product notes and accents.
+- **Color Palette**: Warm charcoal base (`#141312` / `#1C1A19`), warm off-white text (`#E8E3DD`), burnt orange (`#E07A5F`), soft olive (`#709775`), dusty red (`#E06C68`), and muted yellow (`#F4A261`).

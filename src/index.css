@@ -1,111 +1,99 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+@theme {
+  --font-crimson: 'Crimson Text', serif;
+  --font-carme: 'Carme', sans-serif;
+  --font-crafty: 'Crafty Girls', cursive;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --color-warm-bg: #141312;
+  --color-warm-surface: #1C1A19;
+  --color-warm-card: #22201E;
+  --color-warm-border: #332F2C;
+  --color-warm-muted-border: #292624;
+  --color-warm-hover: #2B2825;
+  
+  --color-warm-text: #E8E3DD;
+  --color-warm-cream: #F3EFEA;
+  --color-warm-muted: #A39C95;
+  --color-warm-dim: #78726A;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --color-accent-orange: #E07A5F;
+  --color-accent-olive: #709775;
+  --color-accent-red: #E06C68;
+  --color-accent-yellow: #F4A261;
+  --color-accent-burgundy: #582C35;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html, body {
+  background-color: #141312;
+  color: #E8E3DD;
+  font-family: 'Carme', sans-serif;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
-body {
-  margin: 0;
+.font-crimson {
+  font-family: 'Crimson Text', serif;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+.font-carme {
+  font-family: 'Carme', sans-serif;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+.font-crafty {
+  font-family: 'Crafty Girls', cursive;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #181716;
+}
+::-webkit-scrollbar-thumb {
+  background: #332F2C;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #48433F;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Custom React Flow Styling */
+.react-flow__renderer {
+  background-color: #161514 !important;
+}
+.react-flow__node {
+  border-radius: 8px;
+  padding: 0;
+  box-shadow: none;
+}
+.react-flow__handle {
+  background: #E07A5F !important;
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid #1C1A19 !important;
+}
+.react-flow__controls {
+  background: #1C1A19 !important;
+  border: 1px solid #332F2C !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+.react-flow__controls-button {
+  background: #1C1A19 !important;
+  border-bottom: 1px solid #332F2C !important;
+  color: #E8E3DD !important;
+  fill: #E8E3DD !important;
+}
+.react-flow__controls-button:hover {
+  background: #2B2825 !important;
+}
+.react-flow__attribution {
+  display: none !important;
 }
