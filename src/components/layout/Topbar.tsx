@@ -157,10 +157,10 @@ export const Topbar: React.FC = () => {
             }}
             className="flex items-center space-x-3 p-1.5 pl-2 rounded-xl bg-[#24211F] border border-[#383330] hover:border-[#3E3935] transition-colors"
           >
-            <UserAvatar name={currentUser?.name || 'Alex Mercer'} size="w-8 h-8" />
+            <UserAvatar name={currentUser?.name || 'User'} size="w-8 h-8" />
             <div className="text-left hidden sm:block">
               <div className="text-xs font-semibold text-[#E8E3DD] leading-none">
-                {currentUser?.name || 'Alex Mercer'}
+                {currentUser?.name || 'User'}
               </div>
               <div className="text-[10px] text-[#E07A5F] font-medium leading-tight mt-0.5 flex items-center space-x-1">
                 <span>{role}</span>
@@ -175,7 +175,7 @@ export const Topbar: React.FC = () => {
           {showUserMenu && (
             <div className="absolute right-0 mt-2 w-72 bg-[#1C1A19] border border-[#383330] rounded-xl shadow-xl p-3 z-50">
               <div className="p-3 bg-[#24211F] rounded-lg mb-3 border border-[#332F2C] flex items-center space-x-3">
-                <UserAvatar name={currentUser?.name || 'Alex Mercer'} size="w-10 h-10" />
+                <UserAvatar name={currentUser?.name || 'User'} size="w-10 h-10" />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold text-[#E8E3DD] truncate">{currentUser?.name}</div>
                   <div className="text-xs text-[#A39C95] truncate">{currentUser?.email}</div>

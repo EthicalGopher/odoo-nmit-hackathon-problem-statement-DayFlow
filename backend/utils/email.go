@@ -6,30 +6,51 @@ import (
 	"net/smtp"
 	"os"
 	"strings"
+
+	"dayflow-backend/database"
+	"dayflow-backend/models"
 )
 
-// SendEmail dispatches an email via SMTP if configured, or logs the formatted email dispatch
-func SendEmail(toEmail string, subject string, plainText string, htmlContent string) error {
+// SendEmail dispatches an email via SMTP if configured, using specified HR Gmail address
+func SendEmail(fromEmail string, toEmail string, subject string, plainText string, htmlContent string) error {
+	if fromEmail == "" {
+		fromEmail = os.Getenv("SMTP_FROM")
+		if fromEmail == "" {
+			fromEmail = "hr@dayflow.com"
+		}
+	}
+
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPort := os.Getenv("SMTP_PORT")
 	smtpUser := os.Getenv("SMTP_USER")
 	smtpPass := os.Getenv("SMTP_PASS")
-	fromEmail := os.Getenv("SMTP_FROM")
 
-	if fromEmail == "" {
-		fromEmail = "hr@dayflow.com"
+	if smtpHost == "" && strings.HasSuffix(strings.ToLower(fromEmail), "@gmail.com") {
+		smtpHost = "smtp.gmail.com"
 	}
+	if smtpUser == "" {
+		smtpUser = fromEmail
+	}
+	if smtpPass == "" {
+		var hrUser models.User
+		database.DB.Where("email = ? OR role = 'HR'", fromEmail).First(&hrUser)
+		if hrUser.GmailAppPassword != "" {
+			smtpPass = hrUser.GmailAppPassword
+			smtpHost = "smtp.gmail.com"
+		}
+	}
+
 	if smtpPort == "" {
 		smtpPort = "587"
 	}
 
-	// 1. Send via SMTP if host is provided
-	if smtpHost != "" {
+	// 1. Send via SMTP if host and pass are provided
+	if smtpHost != "" && smtpPass != "" {
 		auth := smtp.PlainAuth("", smtpUser, smtpPass, smtpHost)
 		boundary := "DAYFLOW_MIME_BOUNDARY"
 
 		header := make(map[string]string)
-		header["From"] = fmt.Sprintf("DayFlow HRMS <%s>", fromEmail)
+		header["From"] = fmt.Sprintf("HR Manager <%s>", fromEmail)
 		header["To"] = toEmail
 		header["Subject"] = subject
 		header["MIME-Version"] = "1.0"
@@ -57,16 +78,17 @@ func SendEmail(toEmail string, subject string, plainText string, htmlContent str
 		addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
 		err := smtp.SendMail(addr, auth, fromEmail, []string{toEmail}, []byte(message))
 		if err != nil {
-			log.Printf("[SMTP ERROR] Failed to send email to %s: %v", toEmail, err)
+			log.Printf("[SMTP ERROR] Failed to send email from %s to %s: %v", fromEmail, toEmail, err)
 			return err
 		}
-		log.Printf("[SMTP SUCCESS] Dispatched email to %s (Subject: %s)", toEmail, subject)
+		log.Printf("[SMTP SUCCESS] Dispatched email from %s to %s (Subject: %s)", fromEmail, toEmail, subject)
 		return nil
 	}
 
 	// 2. Clear formatted log output when SMTP host is not set
 	log.Printf("================================================================================")
 	log.Printf("📧 [EMAIL DISPATCH NOTIFICATION]")
+	log.Printf("FROM (HR GMAIL): %s", fromEmail)
 	log.Printf("TO: %s", toEmail)
 	log.Printf("SUBJECT: %s", subject)
 	log.Printf("--------------------------------------------------------------------------------")

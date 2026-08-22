@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -207,6 +206,21 @@ func Register(c fiber.Ctx) error {
 	}
 	database.DB.Create(&payroll)
 
+	// DISPATCH WELCOME EMAIL
+	var hrEmailSender string = req.Email
+	if role != "HR" {
+		var hrUser models.User
+		database.DB.Where("role = ?", "HR").First(&hrUser)
+		if hrUser.Email != "" {
+			hrEmailSender = hrUser.Email
+		}
+	}
+
+	regSubject := fmt.Sprintf("Welcome to %s - DayFlow HRMS Registration", compName)
+	regPlain := fmt.Sprintf("Hello %s,\n\nYour account has been successfully registered on DayFlow HRMS.\n\nEmployee ID: %s\nWork Email: %s\nRole: %s\n\nPlease log in at http://localhost:5173/login.\n\nBest regards,\nDayFlow HRMS Team", req.Name, empID, req.Email, role)
+	regHTML := utils.BuildWelcomeEmailHTML(req.Name, empID, req.Email, pass, compName)
+	go utils.SendEmail(hrEmailSender, req.Email, regSubject, regPlain, regHTML)
+
 	tokenStr, _ := generateJWT(newUser.EmployeeID, newUser.Email, newUser.Role)
 	c.Cookie(&fiber.Cookie{
 		Name:     "dayflow_token",
@@ -274,10 +288,49 @@ func GetMe(c fiber.Ctx) error {
 	return c.JSON(user)
 }
 
+func getCurrentUserFromContext(c fiber.Ctx) (*models.User, error) {
+	cookie := c.Cookies("dayflow_token")
+	if cookie == "" {
+		authHeader := c.Get("Authorization")
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			cookie = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+	if cookie == "" {
+		return nil, fmt.Errorf("no token provided")
+	}
+
+	token, err := jwt.Parse(cookie, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid claims")
+	}
+
+	empID, _ := claims["employee_id"].(string)
+	var user models.User
+	if err := database.DB.Where("employee_id = ?", empID).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return &user, nil
+}
+
 // Employee Handlers
 func GetEmployees(c fiber.Ctx) error {
 	var employees []models.User
-	database.DB.Find(&employees)
+	user, err := getCurrentUserFromContext(c)
+	query := database.DB.Order("created_at desc")
+
+	if err == nil && user != nil && user.CompanyName != "" {
+		query = query.Where("company_name = ?", user.CompanyName)
+	}
+
+	query.Find(&employees)
 	return c.JSON(employees)
 }
 
@@ -321,10 +374,17 @@ func DeleteEmployee(c fiber.Ctx) error {
 	database.DB.Create(&notif)
 
 	// DISPATCH TERMINATION EMAIL
+	var hrUser models.User
+	database.DB.Where("role = ?", "HR").First(&hrUser)
+	hrEmail := hrUser.Email
+	if hrEmail == "" {
+		hrEmail = "sankhyahrick.hr@gmail.com"
+	}
+
 	termSubject := "Important Notice: Employment Termination - DayFlow HRMS"
 	termPlain := fmt.Sprintf("Dear %s,\n\nYour employment contract with %s has been terminated.\nReason: %s\n\nAll access credentials and system records have been deactivated.", user.Name, user.CompanyName, reason)
 	termHTML := utils.BuildTerminationEmailHTML(user.Name, user.EmployeeID, reason, user.CompanyName)
-	go utils.SendEmail(user.Email, termSubject, termPlain, termHTML)
+	go utils.SendEmail(hrEmail, user.Email, termSubject, termPlain, termHTML)
 
 	empID := user.EmployeeID
 
@@ -419,13 +479,18 @@ func CreateEmployee(c fiber.Ctx) error {
 	// Create payroll
 	createPayrollRecord(empID, req.Name, 75000)
 
-	// Automated Email Dispatcher Simulation for HR employee creation
-	emailSubject := "Welcome to Dayflow HRMS - Account Credentials"
+	// Automated Email Dispatcher for HR employee creation
+	hrEmail := hrUser.Email
+	if hrEmail == "" {
+		hrEmail = "sankhyahrick.hr@gmail.com"
+	}
+	emailSubject := fmt.Sprintf("Welcome to %s - DayFlow HRMS Account Credentials", compName)
 	emailBody := fmt.Sprintf(
-		"Hello %s,\n\nYour Employee Account has been created by your HR Officer.\n\nLogin ID: %s\nWork Email: %s\nInitial System Password: %s\n\nPlease log in and update your password under Profile -> Security.\n\nBest regards,\nHR Operations",
+		"Hello %s,\n\nYour Employee Account has been created by your HR Officer.\n\nLogin ID: %s\nWork Email: %s\nInitial System Password: %s\n\nPlease log in at http://localhost:5173/login and update your password under Profile -> Security.\n\nBest regards,\nHR Operations",
 		req.Name, empID, req.Email, pass,
 	)
-	log.Printf("[EMAIL DISPATCHER] Successfully sent welcome email to employee %s (%s):\nSubject: %s\n%s", req.Name, req.Email, emailSubject, emailBody)
+	welcomeHTML := utils.BuildWelcomeEmailHTML(req.Name, empID, req.Email, pass, compName)
+	go utils.SendEmail(hrEmail, req.Email, emailSubject, emailBody, welcomeHTML)
 
 	return c.Status(201).JSON(fiber.Map{
 		"message":          "Employee created successfully & email sent",
@@ -494,6 +559,9 @@ func UpdateEmployeeProfile(c fiber.Ctx) error {
 	}
 	if req.AvatarUrl != "" {
 		emp.AvatarUrl = req.AvatarUrl
+	}
+	if req.GmailAppPassword != "" {
+		emp.GmailAppPassword = req.GmailAppPassword
 	}
 
 	if req.Name != "" {
@@ -580,14 +648,78 @@ func parseTimeToMinutes(tStr string) int {
 	if tStr == "" || tStr == "--:--" {
 		return 0
 	}
-	t, err := time.Parse("03:04 PM", tStr)
-	if err != nil {
-		t, err = time.Parse("15:04", tStr)
-		if err != nil {
-			return 0
+
+	tUpper := strings.ToUpper(tStr)
+	tUpper = strings.ReplaceAll(tUpper, "\u00a0", " ")
+
+	formats := []string{
+		"03:04 PM",
+		"3:04 PM",
+		"03:04PM",
+		"3:04PM",
+		"15:04:05",
+		"15:04",
+	}
+
+	for _, fmtStr := range formats {
+		if t, err := time.Parse(fmtStr, tUpper); err == nil {
+			return t.Hour()*60 + t.Minute()
 		}
 	}
-	return t.Hour()*60 + t.Minute()
+
+	var h, m int
+	var ampm string
+	n, _ := fmt.Sscanf(tUpper, "%d:%d %s", &h, &m, &ampm)
+	if n >= 2 {
+		if strings.HasPrefix(ampm, "P") && h < 12 {
+			h += 12
+		} else if strings.HasPrefix(ampm, "A") && h == 12 {
+			h = 0
+		}
+		return h*60 + m
+	}
+
+	return 0
+}
+
+func formatTimeToAMPM(tStr string) string {
+	tStr = strings.TrimSpace(tStr)
+	if tStr == "" || tStr == "--:--" {
+		return "--:--"
+	}
+
+	tUpper := strings.ToUpper(tStr)
+	tUpper = strings.ReplaceAll(tUpper, "\u00a0", " ")
+
+	formats := []string{
+		"03:04 PM",
+		"3:04 PM",
+		"03:04PM",
+		"3:04PM",
+		"15:04:05",
+		"15:04",
+	}
+
+	for _, fmtStr := range formats {
+		if t, err := time.Parse(fmtStr, tUpper); err == nil {
+			return t.Format("03:04 PM")
+		}
+	}
+
+	var h, m int
+	var ampm string
+	n, _ := fmt.Sscanf(tUpper, "%d:%d %s", &h, &m, &ampm)
+	if n >= 2 {
+		if strings.HasPrefix(ampm, "P") && h < 12 {
+			h += 12
+		} else if strings.HasPrefix(ampm, "A") && h == 12 {
+			h = 0
+		}
+		t := time.Date(2026, 1, 1, h, m, 0, 0, time.UTC)
+		return t.Format("03:04 PM")
+	}
+
+	return tStr
 }
 
 func calculateWorkAndExtraHours(checkInStr, checkOutStr string) (string, string) {
@@ -625,6 +757,15 @@ func GetAttendanceRecords(c fiber.Ctx) error {
 	if empID != "" {
 		var records []models.Attendance
 		database.DB.Where("employee_id = ?", empID).Order("date desc").Find(&records)
+		for i := range records {
+			records[i].CheckIn = formatTimeToAMPM(records[i].CheckIn)
+			records[i].CheckOut = formatTimeToAMPM(records[i].CheckOut)
+			if records[i].CheckIn != "--:--" && records[i].CheckOut != "--:--" {
+				wh, eh := calculateWorkAndExtraHours(records[i].CheckIn, records[i].CheckOut)
+				records[i].WorkHours = wh
+				records[i].ExtraHours = eh
+			}
+		}
 		return c.JSON(records)
 	}
 
@@ -634,15 +775,33 @@ func GetAttendanceRecords(c fiber.Ctx) error {
 
 	recordMap := make(map[string]models.Attendance)
 	for _, r := range todayRecords {
+		r.CheckIn = formatTimeToAMPM(r.CheckIn)
+		r.CheckOut = formatTimeToAMPM(r.CheckOut)
+		if r.CheckIn != "--:--" && r.CheckOut != "--:--" {
+			r.WorkHours, r.ExtraHours = calculateWorkAndExtraHours(r.CheckIn, r.CheckOut)
+			database.DB.Model(&models.Attendance{}).Where("id = ?", r.ID).Updates(map[string]interface{}{
+				"check_in":    r.CheckIn,
+				"check_out":   r.CheckOut,
+				"work_hours":  r.WorkHours,
+				"extra_hours": r.ExtraHours,
+			})
+		}
 		recordMap[r.EmployeeID] = r
 	}
 
 	var users []models.User
-	database.DB.Find(&users)
+	user, err := getCurrentUserFromContext(c)
+	userQuery := database.DB.Order("created_at desc")
+	if err == nil && user != nil && user.CompanyName != "" {
+		userQuery = userQuery.Where("company_name = ?", user.CompanyName)
+	}
+	userQuery.Find(&users)
 
 	var result []models.Attendance
 	for _, u := range users {
 		if rec, exists := recordMap[u.EmployeeID]; exists {
+			rec.CheckIn = formatTimeToAMPM(rec.CheckIn)
+			rec.CheckOut = formatTimeToAMPM(rec.CheckOut)
 			result = append(result, rec)
 		} else {
 			status := "Absent"
@@ -672,8 +831,8 @@ func CheckIn(c fiber.Ctx) error {
 	}
 
 	todayStr := time.Now().Format("2006-01-02")
-	timeStr := req.Time
-	if timeStr == "" {
+	timeStr := formatTimeToAMPM(req.Time)
+	if timeStr == "" || timeStr == "--:--" {
 		timeStr = time.Now().Format("03:04 PM")
 	}
 
@@ -726,8 +885,8 @@ func CheckOut(c fiber.Ctx) error {
 	}
 
 	todayStr := time.Now().Format("2006-01-02")
-	timeStr := req.Time
-	if timeStr == "" {
+	timeStr := formatTimeToAMPM(req.Time)
+	if timeStr == "" || timeStr == "--:--" {
 		timeStr = time.Now().Format("03:04 PM")
 	}
 
@@ -800,6 +959,10 @@ func SubmitLeaveRequest(c fiber.Ctx) error {
 	var user models.User
 	if err := database.DB.Where("employee_id = ?", leave.EmployeeID).First(&user).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Employee not found"})
+	}
+
+	if leave.StartDate > leave.EndDate {
+		return c.Status(400).JSON(fiber.Map{"error": "Start date cannot be after end date"})
 	}
 
 	leave.EmployeeName = user.Name
@@ -883,6 +1046,205 @@ func UpdateLeaveStatus(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message": fmt.Sprintf("Leave request %s", strings.ToLower(req.Status)),
 		"leave":   leave,
+	})
+}
+
+func CallbackLeave(c fiber.Ctx) error {
+	id := c.Params("id")
+	var req models.CallbackLeaveRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid payload"})
+	}
+
+	var leave models.LeaveRequest
+	if err := database.DB.First(&leave, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Leave request not found"})
+	}
+
+	leave.Status = "Callback Pending"
+	leave.CallbackStatus = "Pending"
+	leave.CallbackReason = req.Reason
+	leave.CallbackEffectiveDate = req.EffectiveDate
+	database.DB.Save(&leave)
+
+	var user models.User
+	if err := database.DB.Where("employee_id = ?", leave.EmployeeID).First(&user).Error; err == nil {
+		// Send notification
+		notif := models.Notification{
+			UserEmail: user.Email,
+			Title:     "URGENT: Time Off Call Back Notice",
+			Message:   fmt.Sprintf("HR has requested a call back from your leave starting %s. Reason: %s", req.EffectiveDate, req.Reason),
+			Type:      "danger",
+			Read:      false,
+			CreatedAt: time.Now(),
+		}
+		database.DB.Create(&notif)
+
+		// Dispatch Email via HR Gmail
+		var hrUser models.User
+		database.DB.Where("role = ?", "HR").First(&hrUser)
+		hrEmail := hrUser.Email
+		if hrEmail == "" {
+			hrEmail = "sankhyahrick.hr@gmail.com"
+		}
+
+		subject := "URGENT: Time Off Call Back Notice from HR"
+		plainText := fmt.Sprintf("Dear %s,\n\nHR Operations has issued an urgent Call Back notice for your current leave.\n\nCallback Effective Date: %s\nReason: %s\n\nPlease log in to DayFlow HRMS to accept or decline this callback request.\n\nBest regards,\nHR Operations", user.Name, req.EffectiveDate, req.Reason)
+		htmlContent := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background-color: #141312; color: #E8E3DD; padding: 20px;">
+  <div style="background-color: #1C1A19; border: 1px solid #E06C68; border-radius: 12px; max-width: 550px; margin: 0 auto; padding: 25px;">
+    <h2 style="color: #E06C68; margin-top: 0;">URGENT: Time Off Call Back Notice</h2>
+    <p>Dear <strong>%s</strong>,</p>
+    <p>Your HR Department has issued an official <strong>Leave Callback Notice</strong> for your approved time off.</p>
+    <div style="background-color: #291B1B; border: 1px solid #E06C68; padding: 15px; border-radius: 8px; margin: 15px 0;">
+      <strong>Callback Effective Date:</strong> %s<br />
+      <strong>Reason for Recall:</strong> %s
+    </div>
+    <p>Please log in to your <a href="http://localhost:5173/leaves" style="color: #E07A5F;">DayFlow Leave Portal</a> to accept or respond to this recall request.</p>
+  </div>
+</body>
+</html>`, user.Name, req.EffectiveDate, req.Reason)
+
+		go utils.SendEmail(hrEmail, user.Email, subject, plainText, htmlContent)
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Callback request sent to employee successfully",
+		"leave":   leave,
+	})
+}
+
+func RespondCallback(c fiber.Ctx) error {
+	id := c.Params("id")
+	var req models.RespondCallbackRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid payload"})
+	}
+
+	var leave models.LeaveRequest
+	if err := database.DB.First(&leave, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Leave request not found"})
+	}
+
+	var user models.User
+	database.DB.Where("employee_id = ?", leave.EmployeeID).First(&user)
+
+	if req.Action == "accept" {
+		leave.CallbackStatus = "Accepted"
+		leave.Status = "Approved"
+
+		// Calculate new truncated end date and restore unused leave days
+		effDate, errEff := time.Parse("2006-01-02", leave.CallbackEffectiveDate)
+		startDate, errStart := time.Parse("2006-01-02", leave.StartDate)
+
+		if errEff == nil && errStart == nil {
+			newEndDate := effDate.AddDate(0, 0, -1)
+
+			if newEndDate.Before(startDate) {
+				restoredDays := leave.TotalDays
+				leave.EndDate = leave.StartDate
+				leave.TotalDays = 0
+				leave.Status = "Rejected"
+
+				if leave.LeaveType == "Paid" {
+					user.PaidLeaveAvailable += restoredDays
+				} else if leave.LeaveType == "Sick" {
+					user.SickLeaveAvailable += restoredDays
+				}
+			} else {
+				newTotalDays := int(newEndDate.Sub(startDate).Hours()/24) + 1
+				if newTotalDays < 0 {
+					newTotalDays = 0
+				}
+
+				restoredDays := leave.TotalDays - newTotalDays
+				if restoredDays > 0 {
+					if leave.LeaveType == "Paid" {
+						user.PaidLeaveAvailable += restoredDays
+					} else if leave.LeaveType == "Sick" {
+						user.SickLeaveAvailable += restoredDays
+					}
+				}
+
+				leave.EndDate = newEndDate.Format("2006-01-02")
+				leave.TotalDays = newTotalDays
+			}
+
+			todayStr := time.Now().Format("2006-01-02")
+			if todayStr >= leave.CallbackEffectiveDate {
+				user.Status = "absent"
+			}
+			database.DB.Save(&user)
+		}
+
+		database.DB.Save(&leave)
+
+		notif := models.Notification{
+			UserEmail: "all",
+			Title:     "Callback Accepted",
+			Message:   fmt.Sprintf("%s accepted the leave callback. Leave truncated to %s.", leave.EmployeeName, leave.EndDate),
+			Type:      "success",
+			Read:      false,
+			CreatedAt: time.Now(),
+		}
+		database.DB.Create(&notif)
+
+		return c.JSON(fiber.Map{
+			"message": "Callback request accepted. Leave days after callback date have been restored.",
+			"leave":   leave,
+		})
+	} else {
+		leave.CallbackStatus = "Rejected"
+		leave.Status = "Approved"
+		database.DB.Save(&leave)
+
+		notif := models.Notification{
+			UserEmail: "all",
+			Title:     "Callback Declined",
+			Message:   fmt.Sprintf("%s declined the leave callback.", leave.EmployeeName),
+			Type:      "warning",
+			Read:      false,
+			CreatedAt: time.Now(),
+		}
+		database.DB.Create(&notif)
+
+		return c.JSON(fiber.Map{
+			"message": "Callback request declined.",
+			"leave":   leave,
+		})
+	}
+}
+
+func DeleteLeaveRequest(c fiber.Ctx) error {
+	id := c.Params("id")
+
+	var leave models.LeaveRequest
+	if err := database.DB.First(&leave, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Leave request not found"})
+	}
+
+	// If leave was Approved, restore allocated days back to user's leave balance
+	if leave.Status == "Approved" {
+		var user models.User
+		if err := database.DB.Where("employee_id = ?", leave.EmployeeID).First(&user).Error; err == nil {
+			if leave.LeaveType == "Paid" {
+				user.PaidLeaveAvailable += leave.TotalDays
+			} else if leave.LeaveType == "Sick" {
+				user.SickLeaveAvailable += leave.TotalDays
+			}
+			user.Status = "absent"
+			database.DB.Save(&user)
+		}
+	}
+
+	if err := database.DB.Delete(&leave).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete leave request"})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": fmt.Sprintf("Leave request #%s has been deleted successfully", id),
 	})
 }
 

@@ -29,7 +29,6 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit, fallbackData
   }
 }
 
-// Initial Mock Seed Data for Fallback (Clean database starting with 0 accounts)
 const MOCK_EMPLOYEES: Employee[] = [];
 
 const MOCK_ATTENDANCE: AttendanceRecord[] = [];
@@ -154,6 +153,7 @@ export const api = {
     leaveTravelAllowance?: number;
     workingDays?: number;
     breakTime?: number;
+    gmailAppPassword?: string;
   }): Promise<{ message: string; employee: Employee }> => {
     return apiFetch<{ message: string; employee: Employee }>(`/employees/${id}`, {
       method: 'PUT',
@@ -242,7 +242,7 @@ export const api = {
       leave: {
         id: Date.now(),
         employeeId: request.employeeId || 'ODAL0120260001',
-        employeeName: request.employeeName || 'Alex Mercer',
+        employeeName: request.employeeName || 'Employee',
         leaveType: request.leaveType || 'Paid',
         startDate: request.startDate || '2026-08-25',
         endDate: request.endDate || '2026-08-26',
@@ -259,8 +259,36 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ status, hrComment }),
     }, {
-      message: `Leave request ${status.toLowerCase()}`,
+      message: `Leave request ${status.toLowerCase()} successfully`,
       leave: { ...MOCK_LEAVES[0], id, status, hrComment },
+    });
+  },
+
+  callbackLeave: async (id: number, reason: string, effectiveDate: string): Promise<{ message: string; leave: LeaveRequest }> => {
+    return apiFetch<{ message: string; leave: LeaveRequest }>(`/leaves/${id}/callback`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, effectiveDate }),
+    }, {
+      message: 'Callback request sent successfully',
+      leave: { ...MOCK_LEAVES[0], id, status: 'Callback Pending', callbackStatus: 'Pending', callbackReason: reason, callbackEffectiveDate: effectiveDate },
+    });
+  },
+
+  respondCallback: async (id: number, action: 'accept' | 'reject'): Promise<{ message: string; leave: LeaveRequest }> => {
+    return apiFetch<{ message: string; leave: LeaveRequest }>(`/leaves/${id}/respond-callback`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    }, {
+      message: `Callback request ${action}ed`,
+      leave: { ...MOCK_LEAVES[0], id, callbackStatus: action === 'accept' ? 'Accepted' : 'Rejected', status: 'Approved' },
+    });
+  },
+
+  deleteLeaveRequest: async (id: number): Promise<{ message: string }> => {
+    return apiFetch<{ message: string }>(`/leaves/${id}`, {
+      method: 'DELETE',
+    }, {
+      message: `Leave request #${id} deleted successfully`,
     });
   },
 

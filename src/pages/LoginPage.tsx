@@ -247,7 +247,7 @@ export const LoginPage: React.FC = () => {
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Alex Mercer"
+                  placeholder="e.g. HR Manager"
                   className="w-full bg-[#141312] border border-[#332F2C] rounded-xl pl-9 pr-4 py-2 text-xs text-[#E8E3DD] placeholder-[#78726A] focus:outline-none focus:border-[#E07A5F]"
                   required
                 />

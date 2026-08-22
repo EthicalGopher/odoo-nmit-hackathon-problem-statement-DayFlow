@@ -48,6 +48,18 @@ html, body {
   font-family: 'Crafty Girls', cursive;
 }
 
+/* Invert input type="date" picker icon to pure white */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(200%);
+  cursor: pointer;
+}
+
+/* Convert black/dark glyph emojis to pure white */
+.emoji-white, .white-emoji {
+  display: inline-block;
+  filter: grayscale(100%) brightness(300%) drop-shadow(0 0 1px #ffffff);
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

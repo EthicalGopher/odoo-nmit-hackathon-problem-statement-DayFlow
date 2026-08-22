@@ -22,6 +22,7 @@ export interface Employee {
   status: EmployeeStatus;
   paidLeaveAvailable: number;
   sickLeaveAvailable: number;
+  gmailAppPassword?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -42,7 +43,7 @@ export interface AttendanceRecord {
 }
 
 export type LeaveType = 'Paid' | 'Sick' | 'Unpaid';
-export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
+export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Callback Pending';
 
 export interface LeaveRequest {
   id: number;
@@ -56,6 +57,9 @@ export interface LeaveRequest {
   attachmentUrl?: string;
   status: LeaveStatus;
   hrComment?: string;
+  callbackStatus?: 'Pending' | 'Accepted' | 'Rejected';
+  callbackReason?: string;
+  callbackEffectiveDate?: string;
   createdAt: string;
 }
 

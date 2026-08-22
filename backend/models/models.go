@@ -25,6 +25,7 @@ type User struct {
 	Status             string    `json:"status"` // "present", "absent", "leave"
 	PaidLeaveAvailable int       `json:"paidLeaveAvailable"`
 	SickLeaveAvailable int       `json:"sickLeaveAvailable"`
+	GmailAppPassword   string    `json:"gmailAppPassword,omitempty"`
 	CreatedAt          time.Time `json:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
@@ -53,9 +54,12 @@ type LeaveRequest struct {
 	TotalDays     int       `json:"totalDays"`
 	Reason        string    `json:"reason"`
 	AttachmentUrl string    `json:"attachmentUrl,omitempty"`
-	Status        string    `json:"status"` // "Pending", "Approved", "Rejected"
-	HRComment     string    `json:"hrComment,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
+	Status                string    `json:"status"` // "Pending", "Approved", "Rejected", "Callback Pending"
+	HRComment             string    `json:"hrComment,omitempty"`
+	CallbackStatus        string    `json:"callbackStatus,omitempty"`
+	CallbackReason        string    `json:"callbackReason,omitempty"`
+	CallbackEffectiveDate string    `json:"callbackEffectiveDate,omitempty"`
+	CreatedAt             time.Time `json:"createdAt"`
 }
 
 type Payroll struct {
@@ -146,9 +150,36 @@ type UpdateProfileRequest struct {
 	StandardAllowance    float64 `json:"standardAllowance"`
 	PerformanceBonus     float64 `json:"performanceBonus"`
 	LeaveTravelAllowance float64 `json:"leaveTravelAllowance"`
+	GmailAppPassword     string  `json:"gmailAppPassword"`
 }
 
 type UpdateLeaveStatusRequest struct {
 	Status    string `json:"status"` // "Approved" or "Rejected"
 	HRComment string `json:"hrComment"`
+}
+
+type CallbackLeaveRequest struct {
+	Reason        string `json:"reason"`
+	EffectiveDate string `json:"effectiveDate"`
+}
+
+type RespondCallbackRequest struct {
+	Action string `json:"action"` // "accept" or "reject"
+}
+
+type Message struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	SenderID      string    `gorm:"index;not null" json:"senderId"`
+	SenderName    string    `json:"senderName"`
+	RecipientID   string    `gorm:"index;not null" json:"recipientId"`
+	RecipientName string    `json:"recipientName"`
+	CompanyName   string    `gorm:"index" json:"companyName"`
+	Content       string    `gorm:"type:text;not null" json:"content"`
+	Read          bool      `gorm:"default:false" json:"read"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+type SendMessageRequest struct {
+	RecipientID string `json:"recipientId"`
+	Content     string `json:"content"`
 }

@@ -54,6 +54,9 @@ func main() {
 	api.Get("/leaves", handlers.GetLeaveRequests)
 	api.Post("/leaves/request", handlers.SubmitLeaveRequest)
 	api.Put("/leaves/:id/status", handlers.UpdateLeaveStatus)
+	api.Post("/leaves/:id/callback", handlers.CallbackLeave)
+	api.Post("/leaves/:id/respond-callback", handlers.RespondCallback)
+	api.Delete("/leaves/:id", handlers.DeleteLeaveRequest)
 
 	// Payroll routes
 	api.Get("/payroll", handlers.GetPayroll)

@@ -79,6 +79,23 @@ export const ProfilePage: React.FC = () => {
   const [certifications, setCertifications] = useState<string[]>([]);
   const [newCert, setNewCert] = useState('');
 
+  // Gmail App Password State for HR Live SMTP
+  const [gmailAppPassword, setGmailAppPassword] = useState('');
+  const [gmailSaved, setGmailSaved] = useState(false);
+
+  const handleSaveGmailAppPassword = async () => {
+    if (!currentUser) return;
+    try {
+      await api.updateProfile(currentUser.employeeId, {
+        gmailAppPassword,
+      });
+      setGmailSaved(true);
+      setTimeout(() => setGmailSaved(false), 4000);
+    } catch (err) {
+      console.error('Failed to save Gmail app password', err);
+    }
+  };
+
   // Password Security State
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -1031,6 +1048,42 @@ export const ProfilePage: React.FC = () => {
                 </button>
               </div>
             </form>
+
+            {/* HR Gmail Live SMTP Configuration */}
+            {isHR && (
+              <div className="p-5 bg-[#141312] border border-[#2B2825] rounded-xl space-y-3 font-mono border-l-4 border-l-[#709775] pt-4">
+                <h4 className="font-crimson font-bold text-base text-[#E8E3DD] font-sans">
+                  HR Gmail SMTP Configuration (Live Email Dispatch)
+                </h4>
+                <p className="text-[11px] text-[#A39C95] font-sans leading-relaxed">
+                  Enter your 16-character Google Account <strong>App Password</strong> to send account creation & termination emails directly from <strong>{currentUser.email}</strong> to any real email address.
+                </p>
+                <div className="space-y-1">
+                  <label className="text-[#78726A] text-[10px] block font-semibold font-sans">Gmail App Password (16 chars)</label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="password"
+                      value={gmailAppPassword}
+                      onChange={e => setGmailAppPassword(e.target.value)}
+                      placeholder="e.g. abcd efgh ijkl mnop"
+                      className="flex-1 bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#709775]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveGmailAppPassword}
+                      className="px-4 py-2 rounded-lg bg-[#709775] text-white font-bold text-xs hover:bg-[#5C8260] font-sans shrink-0"
+                    >
+                      Save Key
+                    </button>
+                  </div>
+                </div>
+                {gmailSaved && (
+                  <span className="text-xs text-[#709775] block font-bold font-sans">
+                    ✓ Gmail App Password saved! Real emails will now be sent directly from {currentUser.email}.
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

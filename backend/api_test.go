@@ -36,10 +36,22 @@ func TestAllAPIEndpoints(t *testing.T) {
 		}
 	})
 
+	// Register temporary unit test account
+	testEmail := "temp.unit.test@dayflow.io"
+	regBody := map[string]string{
+		"name":        "Temp Test Account",
+		"email":       testEmail,
+		"password":    "password123",
+		"role":        "HR",
+		"companyName": "Odoo India",
+	}
+	regBytes, _ := json.Marshal(regBody)
+	client.Post(baseURL+"/api/auth/register", "application/json", bytes.NewBuffer(regBytes))
+
 	// 2. Auth Login (Sets JWT Cookie)
 	t.Run("POST /api/auth/login", func(t *testing.T) {
 		body := map[string]string{
-			"email":    "alex.mercer@dayflow.io",
+			"email":    testEmail,
 			"password": "password123",
 		}
 		jsonBytes, _ := json.Marshal(body)
@@ -56,6 +68,8 @@ func TestAllAPIEndpoints(t *testing.T) {
 		}
 	})
 
+	var testEmpID string = "ODAL0120260001"
+
 	// 3. Auth Me (Validates JWT Cookie)
 	t.Run("GET /api/auth/me", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/api/auth/me")
@@ -67,6 +81,12 @@ func TestAllAPIEndpoints(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			b, _ := io.ReadAll(resp.Body)
 			t.Fatalf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(b))
+		}
+
+		var userRes map[string]interface{}
+		json.NewDecoder(resp.Body).Decode(&userRes)
+		if empIdVal, ok := userRes["employeeId"].(string); ok && empIdVal != "" {
+			testEmpID = empIdVal
 		}
 	})
 
@@ -99,7 +119,7 @@ func TestAllAPIEndpoints(t *testing.T) {
 	// 6. Check In
 	t.Run("POST /api/attendance/check-in", func(t *testing.T) {
 		body := map[string]string{
-			"employeeId": "ODAL0120260001",
+			"employeeId": testEmpID,
 			"time":       "09:15 AM",
 		}
 		jsonBytes, _ := json.Marshal(body)
@@ -118,7 +138,7 @@ func TestAllAPIEndpoints(t *testing.T) {
 	// 7. Check Out
 	t.Run("POST /api/attendance/check-out", func(t *testing.T) {
 		body := map[string]string{
-			"employeeId": "ODAL0120260001",
+			"employeeId": testEmpID,
 			"time":       "05:30 PM",
 		}
 		jsonBytes, _ := json.Marshal(body)
@@ -150,7 +170,7 @@ func TestAllAPIEndpoints(t *testing.T) {
 	// 9. Leave Request Submission
 	t.Run("POST /api/leaves/request", func(t *testing.T) {
 		body := map[string]interface{}{
-			"employeeId": "ODAL0120260001",
+			"employeeId": testEmpID,
 			"leaveType":  "Paid",
 			"startDate":  "2026-09-01",
 			"endDate":    "2026-09-02",
@@ -221,4 +241,8 @@ func TestAllAPIEndpoints(t *testing.T) {
 			t.Fatalf("Expected status 200, got %d", resp.StatusCode)
 		}
 	})
+
+	// Delete temporary test user to ensure database remains 100% clean
+	delReq, _ := http.NewRequest("DELETE", baseURL+"/api/employees/"+testEmpID, nil)
+	client.Do(delReq)
 }

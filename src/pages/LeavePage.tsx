@@ -15,6 +15,7 @@ import {
   FiUserCheck,
   FiUserX,
   FiClock,
+  FiTrash2,
 } from 'react-icons/fi';
 
 export const LeavePage: React.FC = () => {
@@ -104,11 +105,75 @@ export const LeavePage: React.FC = () => {
     }
   };
 
+  const handleDeleteLeave = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this leave request?')) return;
+    try {
+      await api.deleteLeaveRequest(id);
+      await fetchLeavesAndAttendance();
+      await refreshEmployees();
+    } catch (err) {
+      console.error('Failed to delete leave request', err);
+    }
+  };
+
+  // Call Back Modal State & Handlers
+  const [callbackModalReq, setCallbackModalReq] = useState<LeaveRequest | null>(null);
+  const [callbackReason, setCallbackReason] = useState('');
+  const [callbackDate, setCallbackDate] = useState('');
+
+  const handleSendCallback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!callbackModalReq) return;
+    try {
+      await api.callbackLeave(callbackModalReq.id, callbackReason, callbackDate);
+      setCallbackModalReq(null);
+      await fetchLeavesAndAttendance();
+    } catch (err) {
+      console.error('Failed to send callback request', err);
+    }
+  };
+
+  const handleAcceptCallback = async (id: number) => {
+    try {
+      await api.respondCallback(id, 'accept');
+      await fetchLeavesAndAttendance();
+      await refreshEmployees();
+    } catch (err) {
+      console.error('Failed to accept callback', err);
+    }
+  };
+
+  const handleDeclineCallback = async (id: number) => {
+    try {
+      await api.respondCallback(id, 'reject');
+      await fetchLeavesAndAttendance();
+      await refreshEmployees();
+    } catch (err) {
+      console.error('Failed to decline callback', err);
+    }
+  };
+
+  const handleStartDateChange = (val: string) => {
+    setStartDate(val);
+    if (endDate < val) {
+      setEndDate(val);
+    }
+  };
+
+  const handleEndDateChange = (val: string) => {
+    if (val < startDate) {
+      setEndDate(startDate);
+    } else {
+      setEndDate(val);
+    }
+  };
+
   // Compute calculated allocation days
   const computeDays = () => {
     try {
       const start = new Date(startDate);
       const end = new Date(endDate);
+      if (end < start) return 1;
       const diffTime = Math.abs(end.getTime() - start.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       return isNaN(diffDays) ? 1 : diffDays;
@@ -122,6 +187,12 @@ export const LeavePage: React.FC = () => {
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+
+    if (startDate > endDate) {
+      alert('Error: Start Date cannot be after End Date.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await api.submitLeaveRequest({
@@ -170,6 +241,50 @@ export const LeavePage: React.FC = () => {
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto font-carme text-[#E8E3DD]">
+      {/* URGENT HR CALL BACK NOTICE BANNER FOR EMPLOYEES */}
+      {leaveRequests
+        .filter(r => r.callbackStatus === 'Pending' && (r.employeeId === currentUser?.employeeId || isHR))
+        .map(req => (
+          <div key={`callback-notice-${req.id}`} className="p-5 rounded-2xl bg-[#291B1B] border-2 border-[#E06C68] shadow-2xl space-y-3 font-carme animate-in slide-in-from-top-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="flex items-center space-x-2 text-[#E06C68] font-bold">
+                <span className="text-xl emoji-white">⚠️</span>
+                <h4 className="text-base">URGENT: Time Off Call Back Notice from HR Operations</h4>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-[#E06C68] text-white font-mono text-[10px] font-bold tracking-wider uppercase animate-pulse">
+                Action Required
+              </span>
+            </div>
+
+            <p className="text-xs text-[#E8E3DD] leading-relaxed">
+              HR Operations has issued an urgent Call Back for <strong>{req.employeeName}</strong> ({req.leaveType} Leave) starting on <strong className="text-[#F4A261] font-mono">{req.callbackEffectiveDate}</strong>.
+            </p>
+
+            <div className="bg-[#1C1A19] p-3 rounded-xl border border-[#E06C68]/40 text-xs font-mono text-[#A39C95]">
+              <strong className="text-[#E8E3DD]">HR Recall Reason:</strong> {req.callbackReason || 'Urgent company operational requirement'}
+            </div>
+
+            {(!isHR || req.employeeId === currentUser?.employeeId) && (
+              <div className="flex items-center space-x-3 pt-1">
+                <button
+                  onClick={() => handleAcceptCallback(req.id)}
+                  className="px-5 py-2 rounded-xl bg-[#709775] text-white font-bold text-xs hover:bg-[#5C8260] transition-all shadow-lg flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <FiCheck className="w-4 h-4" />
+                  <span>Accept Call Back (Truncate & Restore Leave Days)</span>
+                </button>
+                <button
+                  onClick={() => handleDeclineCallback(req.id)}
+                  className="px-5 py-2 rounded-xl bg-[#2B2825] text-[#E06C68] border border-[#E06C68]/40 hover:bg-[#E06C68] hover:text-white transition-all font-bold text-xs flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <FiX className="w-4 h-4" />
+                  <span>Decline Call Back</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
       {/* 1. HEADER & SUB-NAVIGATION BAR */}
       <div className="bg-[#1C1A19] border border-[#332F2C] rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -300,6 +415,10 @@ export const LeavePage: React.FC = () => {
                             <span className="px-2.5 py-0.5 rounded-full bg-[#291B1B] text-[#E06C68] border border-[#E06C68]/40 font-bold text-[11px]">
                               Rejected
                             </span>
+                          ) : req.status === 'Callback Pending' ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#291B1B] text-[#E06C68] border border-[#E06C68]/40 font-bold text-[11px] animate-pulse">
+                              Callback Sent ({req.callbackStatus || 'Pending'})
+                            </span>
                           ) : (
                             <span className="px-2.5 py-0.5 rounded-full bg-[#25221C] text-[#F4A261] border border-[#F4A261]/40 font-bold text-[11px]">
                               Pending
@@ -307,24 +426,57 @@ export const LeavePage: React.FC = () => {
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          {req.status === 'Pending' && (
-                            <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-end space-x-2">
+                            {req.status === 'Pending' ? (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(req.id)}
+                                  className="p-1.5 rounded-lg bg-[#1C251F] text-[#709775] hover:bg-[#709775] hover:text-white transition-colors border border-[#709775]/40 cursor-pointer"
+                                  title="Approve Leave"
+                                >
+                                  <FiCheck className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleReject(req.id)}
+                                  className="p-1.5 rounded-lg bg-[#291B1B] text-[#E06C68] hover:bg-[#E06C68] hover:text-white transition-colors border border-[#E06C68]/40 cursor-pointer"
+                                  title="Reject Leave"
+                                >
+                                  <FiX className="w-4 h-4" />
+                                </button>
+                              </>
+                            ) : req.status === 'Approved' ? (
                               <button
-                                onClick={() => handleApprove(req.id)}
-                                className="p-1.5 rounded-lg bg-[#1C251F] text-[#709775] hover:bg-[#709775] hover:text-white transition-colors border border-[#709775]/40"
-                                title="Approve Leave"
+                                onClick={() => {
+                                  setCallbackModalReq(req);
+                                  setCallbackReason('');
+                                  setCallbackDate(req.startDate);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-[#291B1B] text-[#E06C68] hover:bg-[#E06C68] hover:text-white transition-colors border border-[#E06C68]/40 font-mono text-[11px] font-bold flex items-center space-x-1 shadow-xs cursor-pointer"
+                                title="Call Back Employee from Leave"
                               >
-                                <FiCheck className="w-4 h-4" />
+                                <span><span className="emoji-white">📞</span> Call Back</span>
                               </button>
+                            ) : req.status === 'Callback Pending' ? (
                               <button
-                                onClick={() => handleReject(req.id)}
-                                className="p-1.5 rounded-lg bg-[#291B1B] text-[#E06C68] hover:bg-[#E06C68] hover:text-white transition-colors border border-[#E06C68]/40"
-                                title="Reject Leave"
+                                onClick={() => {
+                                  setCallbackModalReq(req);
+                                  setCallbackReason(req.callbackReason || '');
+                                  setCallbackDate(req.callbackEffectiveDate || req.startDate);
+                                }}
+                                className="px-2 py-1 rounded-lg bg-[#25221C] text-[#F4A261] hover:bg-[#F4A261] hover:text-black transition-colors border border-[#F4A261]/40 font-mono text-[10px] font-bold cursor-pointer"
                               >
-                                <FiX className="w-4 h-4" />
+                                Edit Callback
                               </button>
-                            </div>
-                          )}
+                            ) : null}
+
+                            <button
+                              onClick={() => handleDeleteLeave(req.id)}
+                              className="p-1.5 rounded-lg bg-[#291B1B] text-[#E06C68] hover:bg-[#E06C68] hover:text-white transition-colors border border-[#E06C68]/40 cursor-pointer"
+                              title="Delete Leave Request"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -356,12 +508,13 @@ export const LeavePage: React.FC = () => {
                     <th className="py-3.5 px-4">Time off Type</th>
                     <th className="py-3.5 px-4">Allocation Days</th>
                     <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2B2825]">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-[#A39C95]">
+                      <td colSpan={6} className="py-8 text-center text-[#A39C95]">
                         No time off records submitted yet.
                       </td>
                     </tr>
@@ -386,6 +539,16 @@ export const LeavePage: React.FC = () => {
                               To Approve
                             </span>
                           )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => handleDeleteLeave(req.id)}
+                            className="p-1.5 rounded-lg bg-[#291B1B] text-[#E06C68] hover:bg-[#E06C68] hover:text-white transition-colors border border-[#E06C68]/40 inline-flex items-center space-x-1 cursor-pointer"
+                            title="Delete Request"
+                          >
+                            <FiTrash2 className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-mono font-bold">Delete</span>
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -761,7 +924,7 @@ export const LeavePage: React.FC = () => {
                   <input
                     type="date"
                     value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
+                    onChange={e => handleStartDateChange(e.target.value)}
                     className="w-full bg-[#141312] border border-[#332F2C] rounded-xl px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
                     required
                   />
@@ -772,7 +935,8 @@ export const LeavePage: React.FC = () => {
                   <input
                     type="date"
                     value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
+                    min={startDate}
+                    onChange={e => handleEndDateChange(e.target.value)}
                     className="w-full bg-[#141312] border border-[#332F2C] rounded-xl px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
                     required
                   />
@@ -813,6 +977,76 @@ export const LeavePage: React.FC = () => {
                   className="px-6 py-2.5 rounded-xl bg-[#9333EA] text-white font-bold text-xs hover:bg-[#7E22CE] transition-colors shadow-lg disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Save & Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= D. HR CALL BACK EMPLOYEE MODAL ================= */}
+      {callbackModalReq && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1C1A19] border border-[#332F2C] text-[#E8E3DD] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 font-carme">
+            <div className="flex items-center justify-between border-b border-[#292624] pb-3">
+              <div>
+                <h3 className="font-crimson font-bold text-xl text-[#E06C68]">
+                  <span className="emoji-white">📞</span> Call Back Employee from Leave
+                </h3>
+                <p className="text-xs text-[#78726A] mt-0.5 font-mono">
+                  {callbackModalReq.employeeName} ({callbackModalReq.leaveType} Leave)
+                </p>
+              </div>
+              <button
+                onClick={() => setCallbackModalReq(null)}
+                className="p-1 rounded-lg text-[#78726A] hover:text-white hover:bg-[#292624]"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendCallback} className="space-y-4 font-mono text-xs">
+              <div className="space-y-1">
+                <label className="text-[#78726A] block font-sans font-semibold">Callback Effective Date</label>
+                <input
+                  type="date"
+                  value={callbackDate}
+                  onChange={e => setCallbackDate(e.target.value)}
+                  min={callbackModalReq.startDate}
+                  max={callbackModalReq.endDate}
+                  className="w-full bg-[#141312] border border-[#332F2C] rounded-xl px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E06C68]"
+                  required
+                />
+                <span className="text-[10px] text-[#A39C95] font-sans block">
+                  Original Leave Range: {callbackModalReq.startDate} to {callbackModalReq.endDate}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[#78726A] block font-sans font-semibold">Mandatory Reason for Call Back</label>
+                <textarea
+                  value={callbackReason}
+                  onChange={e => setCallbackReason(e.target.value)}
+                  placeholder="e.g. Critical production deployment requires immediate engineering presence..."
+                  rows={3}
+                  className="w-full bg-[#141312] border border-[#332F2C] rounded-xl p-3 text-[#E8E3DD] focus:outline-none focus:border-[#E06C68] resize-none"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end space-x-3 font-sans">
+                <button
+                  type="button"
+                  onClick={() => setCallbackModalReq(null)}
+                  className="px-4 py-2 rounded-xl border border-[#332F2C] text-[#A39C95] hover:text-white font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#E06C68] text-white font-bold hover:bg-[#C0504D] transition-colors shadow-lg flex items-center space-x-1.5"
+                >
+                  <span>Send Call Back & Email Notice</span>
                 </button>
               </div>
             </form>

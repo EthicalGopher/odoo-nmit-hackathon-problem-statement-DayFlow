@@ -34,7 +34,7 @@ export const Navbar: React.FC = () => {
     if (!currentUser) return;
     setIsSubmitting(true);
     try {
-      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       if (isCheckedIn) {
         await api.checkOut(currentUser.employeeId, nowStr);
         setIsCheckedIn(false);
