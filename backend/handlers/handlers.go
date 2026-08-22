@@ -154,6 +154,7 @@ func Register(c fiber.Ctx) error {
 		EmployeeID:         empID,
 		CompanyName:        compName,
 		CompanyLogo:        req.CompanyLogo,
+		GmailAppPassword:   req.GmailAppPassword,
 		ManagerName:        "Self (HR Manager)",
 		Name:               req.Name,
 		Email:              req.Email,

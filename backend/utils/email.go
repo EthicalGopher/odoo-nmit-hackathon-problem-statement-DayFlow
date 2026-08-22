@@ -35,9 +35,11 @@ func SendEmail(fromEmail string, toEmail string, subject string, plainText strin
 		var hrUser models.User
 		database.DB.Where("email = ? OR role = 'HR'", fromEmail).First(&hrUser)
 		if hrUser.GmailAppPassword != "" {
-			smtpPass = hrUser.GmailAppPassword
+			smtpPass = strings.ReplaceAll(hrUser.GmailAppPassword, " ", "")
 			smtpHost = "smtp.gmail.com"
 		}
+	} else {
+		smtpPass = strings.ReplaceAll(smtpPass, " ", "")
 	}
 
 	if smtpPort == "" {
@@ -78,19 +80,21 @@ func SendEmail(fromEmail string, toEmail string, subject string, plainText strin
 		addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
 		err := smtp.SendMail(addr, auth, fromEmail, []string{toEmail}, []byte(message))
 		if err != nil {
-			log.Printf("[SMTP ERROR] Failed to send email from %s to %s: %v", fromEmail, toEmail, err)
+			log.Printf("❌ [SMTP ERROR] Failed to dispatch live email from %s to %s via %s: %v", fromEmail, toEmail, addr, err)
+			log.Printf("💡 Note: For Gmail accounts, generate a 16-character App Password at https://myaccount.google.com/apppasswords and save it under Profile -> Security -> HR Gmail SMTP Configuration.")
 			return err
 		}
-		log.Printf("[SMTP SUCCESS] Dispatched email from %s to %s (Subject: %s)", fromEmail, toEmail, subject)
+		log.Printf("✅ [SMTP SUCCESS] Dispatched live email from %s to %s (Subject: %s)", fromEmail, toEmail, subject)
 		return nil
 	}
 
-	// 2. Clear formatted log output when SMTP host is not set
+	// 2. Console Log Fallback when no SMTP Password is configured
 	log.Printf("================================================================================")
-	log.Printf("📧 [EMAIL DISPATCH NOTIFICATION]")
+	log.Printf("📧 [EMAIL DISPATCH NOTIFICATION (SIMULATION MODE)]")
 	log.Printf("FROM (HR GMAIL): %s", fromEmail)
 	log.Printf("TO: %s", toEmail)
 	log.Printf("SUBJECT: %s", subject)
+	log.Printf("⚠️ NOTE: To send REAL emails to inbox, enter your 16-char Gmail App Password under Profile -> Security -> HR Gmail SMTP Configuration.")
 	log.Printf("--------------------------------------------------------------------------------")
 	log.Printf("%s", plainText)
 	log.Printf("================================================================================")

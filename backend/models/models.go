@@ -8,7 +8,7 @@ type User struct {
 	ID                 uint      `gorm:"primaryKey" json:"id"`
 	EmployeeID         string    `gorm:"uniqueIndex;not null" json:"employeeId"`
 	CompanyName        string    `json:"companyName"`
-	CompanyLogo        string    `json:"companyLogo"`
+	CompanyLogo        string    `gorm:"type:text" json:"companyLogo"`
 	ManagerName        string    `json:"managerName"`
 	Name               string    `json:"name"`
 	Email              string    `gorm:"uniqueIndex;not null" json:"email"`
@@ -31,7 +31,7 @@ type User struct {
 	IFSCCode           string    `json:"ifscCode"`
 	PanNo              string    `json:"panNo"`
 	UanNo              string    `json:"uanNo"`
-	AvatarUrl          string    `json:"avatarUrl"`
+	AvatarUrl          string    `gorm:"type:text" json:"avatarUrl"`
 	Status             string    `json:"status"` // "present", "absent", "leave"
 	PaidLeaveAvailable int       `json:"paidLeaveAvailable"`
 	SickLeaveAvailable int       `json:"sickLeaveAvailable"`
@@ -118,16 +118,17 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	CompanyName string `json:"companyName"`
-	CompanyLogo string `json:"companyLogo"`
-	EmployeeID  string `json:"employeeId"`
-	Name        string `json:"name"`
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	Role        string `json:"role"`
-	Phone       string `json:"phone"`
-	Department  string `json:"department"`
-	JobTitle    string `json:"jobTitle"`
+	CompanyName      string `json:"companyName"`
+	CompanyLogo      string `json:"companyLogo"`
+	EmployeeID       string `json:"employeeId"`
+	Name             string `json:"name"`
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	Role             string `json:"role"`
+	Phone            string `json:"phone"`
+	Department       string `json:"department"`
+	JobTitle         string `json:"jobTitle"`
+	GmailAppPassword string `json:"gmailAppPassword"`
 }
 
 type CheckInRequest struct {

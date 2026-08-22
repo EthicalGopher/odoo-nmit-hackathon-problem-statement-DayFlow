@@ -83,5 +83,13 @@ func InitDB() *gorm.DB {
 }
 
 func SeedData(db *gorm.DB) {
-	log.Println("Database initialized cleanly.")
+	// Wipe all records across all tables to start completely fresh from scratch (0 data)
+	db.Exec("DELETE FROM users")
+	db.Exec("DELETE FROM attendances")
+	db.Exec("DELETE FROM leave_requests")
+	db.Exec("DELETE FROM payrolls")
+	db.Exec("DELETE FROM notifications")
+	db.Exec("DELETE FROM documents")
+	db.Exec("DELETE FROM messages")
+	log.Println("Database wiped cleanly. 0 data remaining — starting from scratch.")
 }
