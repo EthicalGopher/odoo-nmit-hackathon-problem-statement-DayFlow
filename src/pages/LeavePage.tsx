@@ -367,7 +367,7 @@ export const LeavePage: React.FC = () => {
           /* For Admin & HR Officer Table View */
           <div className="bg-[#1C1A19] border border-[#332F2C] rounded-2xl p-6 shadow-xl space-y-4">
             <h3 className="font-crimson font-bold text-xl text-[#E8E3DD]">
-              Time Off Requests Directory (Admin / HR View)
+              Time Off Requests
             </h3>
 
             <div className="overflow-x-auto border border-[#2B2825] rounded-xl shadow-inner">

@@ -6,6 +6,7 @@ import { ViewModeProvider } from './context/ViewModeContext';
 import { Navbar } from './components/layout/Navbar';
 
 // Pages
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { AttendancePage } from './pages/AttendancePage';
@@ -62,6 +63,9 @@ export function App() {
         <ViewModeProvider>
           <BrowserRouter>
             <Routes>
+              {/* Public Landing Page */}
+              <Route path="/" element={<LandingPage />} />
+
               {/* Public Auth Route */}
               <Route path="/login" element={<LoginPage />} />
 
@@ -74,10 +78,8 @@ export function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/messages" element={<MessagesPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/" element={<Navigate to="/employees" replace />} />
-                <Route path="/dashboard" element={<Navigate to="/employees" replace />} />
-                <Route path="*" element={<Navigate to="/employees" replace />} />
+                 <Route path="/settings" element={<SettingsPage />} />
+                 <Route path="*" element={<Navigate to="/employees" replace />} />
               </Route>
             </Routes>
           </BrowserRouter>

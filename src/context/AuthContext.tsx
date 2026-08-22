@@ -47,24 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (me && me.employeeId) {
           setCurrentUser(me);
           localStorage.setItem('dayflow_user', JSON.stringify(me));
-        } else if (data.length > 0) {
-          const defaultUser = data.find(e => e.role === 'HR') || data[0];
-          setCurrentUser(defaultUser);
-          localStorage.setItem('dayflow_user', JSON.stringify(defaultUser));
         } else {
           setCurrentUser(null);
           localStorage.removeItem('dayflow_user');
         }
       } catch {
-        // If /auth/me fails or cookie is invalid
-        if (data.length > 0) {
-          const defaultUser = data.find(e => e.role === 'HR') || data[0];
-          setCurrentUser(defaultUser);
-          localStorage.setItem('dayflow_user', JSON.stringify(defaultUser));
-        } else {
-          setCurrentUser(null);
-          localStorage.removeItem('dayflow_user');
-        }
+        // No valid session — do not auto-authenticate
+        setCurrentUser(null);
+        localStorage.removeItem('dayflow_user');
       }
     } catch (err) {
       console.error('Failed to load employees', err);

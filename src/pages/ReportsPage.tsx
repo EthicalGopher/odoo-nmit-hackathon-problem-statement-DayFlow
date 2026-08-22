@@ -44,8 +44,9 @@ export const ReportsPage: React.FC = () => {
   const [selectedPayrollForSlip, setSelectedPayrollForSlip] = useState<Payroll | null>(null);
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
 
-  // Attendance Reports State
+   // Attendance Reports State
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
+  const [monthlyAttendanceLogs, setMonthlyAttendanceLogs] = useState<AttendanceRecord[]>([]);
   const [attendanceSearch, setAttendanceSearch] = useState('');
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState('All');
 
@@ -62,8 +63,13 @@ export const ReportsPage: React.FC = () => {
       setPayrolls(Array.isArray(data) ? data : [data]);
     }).catch(console.error);
 
-    // Load attendance records
+    // Load today's attendance records (for the log table)
     api.getAttendanceRecords().then(setAttendanceLogs).catch(console.error);
+
+    // Load full-month attendance records (for monthly totals)
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    api.getAttendanceRecords(undefined, undefined, monthStr).then(setMonthlyAttendanceLogs).catch(console.error);
   }, [allEmployees]);
 
   const handleOpenSalarySlip = async (emp: Employee) => {
@@ -217,7 +223,59 @@ export const ReportsPage: React.FC = () => {
     return matchesSearch && matchesDept;
   });
 
-  // Filtering for Attendance Logs
+   // Parse a time string like "09:12 AM" or "17:30" into minutes since midnight
+  const parseTimeToMinutes = (timeStr: string): number => {
+    if (!timeStr || timeStr === '--:--') return 0;
+    const t = timeStr.trim().toUpperCase().replace(/\u00a0/g, ' ');
+    const match = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!match) return 0;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const ampm = match[3];
+    if (ampm && /P/i.test(ampm)) {
+      if (h < 12) h += 12;
+    } else if (ampm && /A/i.test(ampm)) {
+      if (h === 12) h = 0;
+    } else if (h < 8 && !ampm) {
+      h += 12;
+    }
+    return h * 60 + m;
+  };
+
+  // Compute work hours from check-in and check-out (in hours, float)
+  const computeWorkHoursFromInOut = (checkIn: string, checkOut: string): number => {
+    const inMins = parseTimeToMinutes(checkIn);
+    const outMins = parseTimeToMinutes(checkOut);
+    if (inMins === 0 || outMins === 0 || outMins <= inMins) return 0;
+    return (outMins - inMins) / 60;
+  };
+
+  // Format total hours as "Xh Ym"
+  const formatHours = (totalHours: number): string => {
+    const h = Math.floor(totalHours);
+    const m = Math.round((totalHours - h) * 60);
+    return `${h}h ${m.toString().padStart(2, '0')}m`;
+  };
+
+  // Compute monthly work-hour totals per employee from check-in/check-out times
+  const monthlyWorkTotals = (() => {
+    const totals: Record<string, number> = {};
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    monthlyAttendanceLogs.forEach(log => {
+      const logDate = new Date(log.date);
+      if (isNaN(logDate.getTime())) return;
+      if (logDate.getMonth() !== currentMonth || logDate.getFullYear() !== currentYear) return;
+      const empId = log.employeeId;
+      totals[empId] = (totals[empId] || 0) + computeWorkHoursFromInOut(log.checkIn, log.checkOut);
+    });
+
+    return totals;
+  })();
+
+   // Filtering for Attendance Logs
   const filteredAttendanceLogs = attendanceLogs.filter(log => {
     const matchesSearch =
       log.employeeName.toLowerCase().includes(attendanceSearch.toLowerCase()) ||
@@ -558,15 +616,16 @@ export const ReportsPage: React.FC = () => {
                     <th className="py-3.5 px-4">Employee</th>
                     <th className="py-3.5 px-4">Check In</th>
                     <th className="py-3.5 px-4">Check Out</th>
-                    <th className="py-3.5 px-4">Work Hours</th>
-                    <th className="py-3.5 px-4">Extra Hours</th>
-                    <th className="py-3.5 px-4 text-right">Status</th>
+                     <th className="py-3.5 px-4">Work Hours</th>
+                     <th className="py-3.5 px-4">Extra Hours</th>
+                     <th className="py-3.5 px-4">Total Monthly Work Hours</th>
+                     <th className="py-3.5 px-4 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#24211F]">
                   {filteredAttendanceLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-[#78726A]">
+                      <td colSpan={8} className="py-8 text-center text-[#78726A]">
                         No attendance log entries matched the search criteria.
                       </td>
                     </tr>
@@ -585,8 +644,11 @@ export const ReportsPage: React.FC = () => {
                           </td>
                           <td className="py-3.5 px-4 font-mono text-[#709775]">{log.checkIn || '--:--'}</td>
                           <td className="py-3.5 px-4 font-mono text-[#F4A261]">{log.checkOut || '--:--'}</td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-[#E8E3DD]">{log.workHours || '8h 00m'}</td>
-                          <td className="py-3.5 px-4 font-mono text-[#78726A]">{log.extraHours || '0h 00m'}</td>
+                              <td className="py-3.5 px-4 font-mono font-bold text-[#E8E3DD]">{log.checkOut && log.checkOut !== '--:--' ? formatHours(computeWorkHoursFromInOut(log.checkIn, log.checkOut)) : (log.workHours || '0h 00m')}</td>
+                            <td className="py-3.5 px-4 font-mono text-[#78726A]">{log.extraHours || '0h 00m'}</td>
+                           <td className="py-3.5 px-4 font-mono font-bold text-[#F4A261]">
+                             {formatHours(monthlyWorkTotals[log.employeeId] || 0)}
+                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <span
                               className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -607,10 +669,25 @@ export const ReportsPage: React.FC = () => {
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
+                     })
+                   )}
+                 </tbody>
+                 <tfoot className="bg-[#141312] border-t-2 border-[#2B2825]">
+                   <tr>
+                     <td colSpan={5} className="py-3 px-4 text-xs font-mono text-[#78726A]">
+                       Company Total Monthly Work Hours
+                     </td>
+                     <td className="py-3 px-4 font-mono font-extrabold text-[#E07A5F]">
+                       {formatHours(Object.values(monthlyWorkTotals).reduce((sum, v) => sum + v, 0))}
+                     </td>
+                     <td className="py-3 px-4 text-right">
+                       <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#1C251F] text-[#709775] border border-[#709775]/40">
+                         <span>—</span>
+                       </span>
+                     </td>
+                   </tr>
+                 </tfoot>
+               </table>
             </div>
           </div>
         </div>

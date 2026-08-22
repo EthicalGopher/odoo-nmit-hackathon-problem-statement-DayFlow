@@ -175,14 +175,15 @@ export const api = {
   },
 
   // Attendance
-  getAttendanceRecords: async (employeeId?: string, date?: string): Promise<AttendanceRecord[]> => {
+   getAttendanceRecords: async (employeeId?: string, date?: string, month?: string): Promise<AttendanceRecord[]> => {
     const query = new URLSearchParams();
     if (employeeId) query.append('employeeId', employeeId);
     if (date) query.append('date', date);
+    if (month) query.append('month', month);
     const qs = query.toString() ? `?${query.toString()}` : '';
 
     return apiFetch<AttendanceRecord[]>(`/attendance${qs}`, undefined, employeeId ? MOCK_ATTENDANCE.filter(a => a.employeeId === employeeId) : MOCK_ATTENDANCE);
-  },
+   },
 
   checkIn: async (employeeId: string, time?: string): Promise<{ message: string; record: AttendanceRecord }> => {
     return apiFetch<{ message: string; record: AttendanceRecord }>('/attendance/check-in', {

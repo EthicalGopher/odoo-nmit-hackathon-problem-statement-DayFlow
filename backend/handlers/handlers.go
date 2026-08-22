@@ -780,9 +780,26 @@ func calculateWorkAndExtraHours(checkInStr, checkOutStr string) (string, string)
 // Attendance Handlers
 func GetAttendanceRecords(c fiber.Ctx) error {
 	empID := c.Query("employeeId")
+	month := c.Query("month")
 	date := c.Query("date")
 	if date == "" {
 		date = time.Now().Format("2006-01-02")
+	}
+
+	// If a month is specified, return all attendance records for that month
+	if month != "" {
+		var records []models.Attendance
+		database.DB.Where("date LIKE ?", month+"%").Order("date desc, employee_id").Find(&records)
+		for i := range records {
+			records[i].CheckIn = formatTimeToAMPM(records[i].CheckIn)
+			records[i].CheckOut = formatTimeToAMPM(records[i].CheckOut)
+			if records[i].CheckIn != "--:--" && records[i].CheckOut != "--:--" {
+				wh, eh := calculateWorkAndExtraHours(records[i].CheckIn, records[i].CheckOut)
+				records[i].WorkHours = wh
+				records[i].ExtraHours = eh
+			}
+		}
+		return c.JSON(records)
 	}
 
 	if empID != "" {
@@ -875,21 +892,31 @@ func CheckIn(c fiber.Ctx) error {
 	var record models.Attendance
 	err := database.DB.Where("employee_id = ? AND date = ?", req.EmployeeID, todayStr).First(&record).Error
 
-	record.EmployeeID = req.EmployeeID
-	record.EmployeeName = user.Name
-	record.Date = todayStr
-	record.CheckIn = timeStr
-	record.CheckOut = "--:--"
-	record.WorkHours = "00h 00m"
-	record.ExtraHours = "00h 00m"
-	record.Status = "Present"
-
 	if err != nil {
+		// New record for today — create with check-in
+		record = models.Attendance{
+			EmployeeID:   req.EmployeeID,
+			EmployeeName: user.Name,
+			Date:         todayStr,
+			CheckIn:      timeStr,
+			CheckOut:     "--:--",
+			WorkHours:    "00h 00m",
+			ExtraHours:   "00h 00m",
+			Status:       "Present",
+		}
 		database.DB.Create(&record)
 	} else {
+		// Record already exists — only update check-in if not yet set
+		if record.CheckIn == "" || record.CheckIn == "--:--" {
+			record.CheckIn = timeStr
+		}
+		// Recompute work hours only if both check-in and check-out are present
+		if record.CheckIn != "--:--" && record.CheckOut != "--:--" {
+			record.WorkHours, record.ExtraHours = calculateWorkAndExtraHours(record.CheckIn, record.CheckOut)
+		}
+		record.Status = "Present"
 		database.DB.Save(&record)
 	}
-
 	user.Status = "present"
 	database.DB.Save(&user)
 
