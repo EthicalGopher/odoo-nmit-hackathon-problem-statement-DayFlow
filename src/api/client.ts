@@ -1,4 +1,5 @@
-import type { Employee, AttendanceRecord, LeaveRequest, Payroll, NotificationItem, ReportAnalytics } from '../types';
+import type { Employee, AttendanceRecord, LeaveRequest, Payroll, NotificationItem, ReportAnalytics, Message, UnreadCountResponse } from '../types';
+
 
 const API_BASE = '/api';
 
@@ -324,4 +325,22 @@ export const api = {
   getReportsAnalytics: async (): Promise<ReportAnalytics> => {
     return apiFetch<ReportAnalytics>('/reports/analytics', undefined, MOCK_REPORTS);
   },
+
+  // Private Messages
+  getMessages: async (withEmpId?: string): Promise<Message[]> => {
+    const qs = withEmpId ? `?with=${encodeURIComponent(withEmpId)}` : '';
+    return apiFetch<Message[]>(`/messages${qs}`, undefined, []);
+  },
+
+  sendMessage: async (recipientId: string, content: string): Promise<{ message: string; data: Message }> => {
+    return apiFetch<{ message: string; data: Message }>('/messages', {
+      method: 'POST',
+      body: JSON.stringify({ recipientId, content }),
+    });
+  },
+
+  getUnreadMessageCounts: async (): Promise<UnreadCountResponse> => {
+    return apiFetch<UnreadCountResponse>('/messages/unread', undefined, { unreadBySender: {}, totalUnread: 0 });
+  },
 };
+

@@ -25,6 +25,7 @@ export const NotificationsPage: React.FC = () => {
     try {
       await api.markNotificationRead('read-all');
       await fetchNotifs();
+      window.dispatchEvent(new Event('dayflow_notifications_updated'));
     } catch (err) {
       console.error(err);
     }
@@ -34,10 +35,12 @@ export const NotificationsPage: React.FC = () => {
     try {
       await api.markNotificationRead(id);
       await fetchNotifs();
+      window.dispatchEvent(new Event('dayflow_notifications_updated'));
     } catch (err) {
       console.error(err);
     }
   };
+
 
   return (
     <div className="p-8 space-y-8 max-w-4xl mx-auto">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { UserAvatar } from '../components/ui/UserAvatar';
+import { PrivateChatDrawer } from '../components/ui/PrivateChatDrawer';
 import { api } from '../api/client';
 import type { Employee, Payroll } from '../types';
 import { Plane } from 'lucide-react';
@@ -16,7 +17,9 @@ import {
   FiDollarSign,
   FiShield,
   FiTrash2,
+  FiMessageSquare,
 } from 'react-icons/fi';
+
 
 export const EmployeesPage: React.FC = () => {
   const { currentUser, allEmployees, role, refreshEmployees } = useAuth();
@@ -54,7 +57,33 @@ export const EmployeesPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdResult, setCreatedResult] = useState<{ loginId: string; pass: string } | null>(null);
 
+  // Private Chat Drawer State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatTargetEmp, setChatTargetEmp] = useState<Employee | null>(null);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+
+  React.useEffect(() => {
+    const checkUnread = async () => {
+      if (!currentUser) return;
+      try {
+        const res = await api.getUnreadMessageCounts();
+        setTotalUnreadCount(res.totalUnread || 0);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkUnread();
+    const interval = setInterval(checkUnread, 3000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
+  const openChatWith = (emp?: Employee | null) => {
+    if (emp) setChatTargetEmp(emp);
+    setIsChatOpen(true);
+  };
+
   const departments = ['All', 'People & Culture', 'Engineering', 'Design', 'Product'];
+
 
   const isHR = role === 'HR';
 
@@ -340,6 +369,20 @@ export const EmployeesPage: React.FC = () => {
                 </span>
 
                 <div className="flex items-center space-x-2">
+                  {emp.employeeId !== currentUser?.employeeId && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openChatWith(emp);
+                      }}
+                      className="p-1.5 rounded-lg bg-[#24211F] text-[#E07A5F] hover:bg-[#E07A5F] hover:text-white transition-colors border border-[#E07A5F]/40 flex items-center space-x-1"
+                      title="Send Private Message"
+                    >
+                      <FiMessageSquare className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold">Message</span>
+                    </button>
+                  )}
                   {canFire && (
                     <button
                       type="button"
@@ -358,6 +401,7 @@ export const EmployeesPage: React.FC = () => {
                     Click for Profile →
                   </span>
                 </div>
+
               </div>
             </div>
           );
@@ -802,7 +846,22 @@ export const EmployeesPage: React.FC = () => {
             </div>
 
             <div className="pt-4 border-t border-[#292624] flex justify-between items-center">
-              <div>
+              <div className="flex items-center space-x-3">
+                {viewOnlyEmployee.employeeId !== currentUser?.employeeId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = viewOnlyEmployee;
+                      setViewOnlyEmployee(null);
+                      openChatWith(target);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#E07A5F] text-white text-xs font-bold hover:bg-[#D0694E] transition-colors flex items-center space-x-1.5 shadow-md"
+                  >
+                    <FiMessageSquare className="w-4 h-4" />
+                    <span>Send Private Message</span>
+                  </button>
+                )}
+
                 {isHR && viewOnlyEmployee.employeeId !== currentUser?.employeeId && (
                   <button
                     type="button"
@@ -1027,6 +1086,33 @@ export const EmployeesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Floating Private Messages Action Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          type="button"
+          onClick={() => openChatWith()}
+          className="px-5 py-3 rounded-full bg-[#E07A5F] text-white font-bold text-xs hover:bg-[#D0694E] transition-all shadow-2xl flex items-center space-x-2 border.2 border-[#1C1A19] cursor-pointer group hover:scale-105"
+        >
+          <FiMessageSquare className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          <span>Private Chat</span>
+          {totalUnreadCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-white text-[#E07A5F] font-mono text-[10px] font-extrabold animate-bounce">
+              {totalUnreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Private Chat Drawer Window */}
+      <PrivateChatDrawer
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        targetEmployee={chatTargetEmp}
+        allEmployees={allEmployees}
+        currentUser={currentUser}
+      />
     </div>
   );
 };
+

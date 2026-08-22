@@ -6,9 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"strings"
 	"testing"
 	"time"
 )
+
 
 const baseURL = "http://localhost:8080"
 
@@ -229,7 +231,47 @@ func TestAllAPIEndpoints(t *testing.T) {
 		}
 	})
 
-	// 13. Auth Logout
+	// 13. Messages - Send Message
+	t.Run("POST /api/messages", func(t *testing.T) {
+		msgPayload := strings.NewReader(`{"recipientId":"` + testEmpID + `", "content":"Hello test message"}`)
+		resp, err := client.Post(baseURL+"/api/messages", "application/json", msgPayload)
+		if err != nil {
+			t.Fatalf("SendMessage request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("Expected status 201, got %d", resp.StatusCode)
+		}
+	})
+
+	// 14. Messages - Get Messages Thread
+	t.Run("GET /api/messages", func(t *testing.T) {
+		resp, err := client.Get(baseURL + "/api/messages?with=" + testEmpID)
+		if err != nil {
+			t.Fatalf("GetMessages request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+		}
+	})
+
+	// 15. Messages - Get Unread Counts
+	t.Run("GET /api/messages/unread", func(t *testing.T) {
+		resp, err := client.Get(baseURL + "/api/messages/unread")
+		if err != nil {
+			t.Fatalf("GetUnreadMessageCounts request failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d", resp.StatusCode)
+		}
+	})
+
+	// 16. Auth Logout
 	t.Run("POST /api/auth/logout", func(t *testing.T) {
 		resp, err := client.Post(baseURL+"/api/auth/logout", "application/json", nil)
 		if err != nil {
@@ -246,3 +288,4 @@ func TestAllAPIEndpoints(t *testing.T) {
 	delReq, _ := http.NewRequest("DELETE", baseURL+"/api/employees/"+testEmpID, nil)
 	client.Do(delReq)
 }
+

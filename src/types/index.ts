@@ -104,3 +104,21 @@ export interface ReportAnalytics {
   attendanceRate: number;
   workingDaysThisMonth: number;
 }
+
+export interface Message {
+  id: number;
+  senderId: string;
+  senderName: string;
+  recipientId: string;
+  recipientName: string;
+  companyName?: string;
+  content: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface UnreadCountResponse {
+  unreadBySender: Record<string, number>;
+  totalUnread: number;
+}
+

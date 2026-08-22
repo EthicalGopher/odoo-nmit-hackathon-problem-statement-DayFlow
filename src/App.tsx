@@ -14,6 +14,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MessagesPage } from './pages/MessagesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ export function App() {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/" element={<Navigate to="/employees" replace />} />
                 <Route path="/dashboard" element={<Navigate to="/employees" replace />} />

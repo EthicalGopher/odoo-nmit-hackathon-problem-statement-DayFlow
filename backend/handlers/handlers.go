@@ -1408,3 +1408,124 @@ func createPayrollRecord(empId string, name string, monthWage float64) models.Pa
 	database.DB.Create(&p)
 	return p
 }
+
+// Messaging Handlers
+func GetMessages(c fiber.Ctx) error {
+	currentUser, err := getCurrentUserFromContext(c)
+	if err != nil || currentUser == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	withEmpID := c.Query("with")
+	if withEmpID == "" {
+		withEmpID = c.Query("recipientId")
+	}
+
+	if withEmpID != "" {
+		var messages []models.Message
+		database.DB.Where(
+			"(sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)",
+			currentUser.EmployeeID, withEmpID, withEmpID, currentUser.EmployeeID,
+		).Order("created_at asc").Find(&messages)
+
+		// Mark received messages from this sender as read
+		database.DB.Model(&models.Message{}).
+			Where("sender_id = ? AND recipient_id = ? AND read = ?", withEmpID, currentUser.EmployeeID, false).
+			Update("read", true)
+
+		return c.JSON(messages)
+	}
+
+	var allMessages []models.Message
+	database.DB.Where("sender_id = ? OR recipient_id = ?", currentUser.EmployeeID, currentUser.EmployeeID).
+		Order("created_at desc").Find(&allMessages)
+
+	return c.JSON(allMessages)
+}
+
+func SendMessage(c fiber.Ctx) error {
+	currentUser, err := getCurrentUserFromContext(c)
+	if err != nil || currentUser == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	var req models.SendMessageRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request payload"})
+	}
+
+	if req.RecipientID == "" || strings.TrimSpace(req.Content) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Recipient ID and message content are required"})
+	}
+
+	var recipient models.User
+	if err := database.DB.Where("employee_id = ? OR id = ?", req.RecipientID, req.RecipientID).First(&recipient).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Recipient employee not found"})
+	}
+
+	msg := models.Message{
+		SenderID:      currentUser.EmployeeID,
+		SenderName:    currentUser.Name,
+		RecipientID:   recipient.EmployeeID,
+		RecipientName: recipient.Name,
+		CompanyName:   currentUser.CompanyName,
+		Content:       strings.TrimSpace(req.Content),
+		Read:          false,
+		CreatedAt:     time.Now(),
+	}
+
+	if err := database.DB.Create(&msg).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to send message"})
+	}
+
+	// Create notification for recipient
+	snippet := msg.Content
+	if len(snippet) > 60 {
+		snippet = snippet[:60] + "..."
+	}
+	notif := models.Notification{
+		UserEmail: recipient.Email,
+		Title:     fmt.Sprintf("New Private Message from %s", currentUser.Name),
+		Message:   fmt.Sprintf("\"%s\"", snippet),
+		Type:      "info",
+		Read:      false,
+		CreatedAt: time.Now(),
+	}
+	database.DB.Create(&notif)
+
+	return c.Status(201).JSON(fiber.Map{
+		"message": "Message sent successfully",
+		"data":    msg,
+	})
+}
+
+func GetUnreadMessageCounts(c fiber.Ctx) error {
+	currentUser, err := getCurrentUserFromContext(c)
+	if err != nil || currentUser == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	type Result struct {
+		SenderID string `json:"senderId"`
+		Count    int    `json:"count"`
+	}
+	var results []Result
+	database.DB.Model(&models.Message{}).
+		Select("sender_id, count(*) as count").
+		Where("recipient_id = ? AND read = ?", currentUser.EmployeeID, false).
+		Group("sender_id").
+		Scan(&results)
+
+	unreadMap := make(map[string]int)
+	totalUnread := 0
+	for _, r := range results {
+		unreadMap[r.SenderID] = r.Count
+		totalUnread += r.Count
+	}
+
+	return c.JSON(fiber.Map{
+		"unreadBySender": unreadMap,
+		"totalUnread":    totalUnread,
+	})
+}
+

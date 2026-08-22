@@ -69,6 +69,12 @@ func main() {
 	// Analytics & Reports route
 	api.Get("/reports/analytics", handlers.GetReportsAnalytics)
 
+	// Private Messaging routes
+	api.Get("/messages", handlers.GetMessages)
+	api.Post("/messages", handlers.SendMessage)
+	api.Get("/messages/unread", handlers.GetUnreadMessageCounts)
+
+
 	// Health Check
 	app.Get("/health", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{
