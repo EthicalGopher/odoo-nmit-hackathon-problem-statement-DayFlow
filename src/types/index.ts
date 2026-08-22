@@ -18,6 +18,16 @@ export interface Employee {
   address: string;
   location?: string;
   workingDays?: number;
+  dob?: string;
+  nationality?: string;
+  personalEmail?: string;
+  gender?: string;
+  maritalStatus?: string;
+  accountNumber?: string;
+  bankName?: string;
+  ifscCode?: string;
+  panNo?: string;
+  uanNo?: string;
   avatarUrl: string;
   status: EmployeeStatus;
   paidLeaveAvailable: number;

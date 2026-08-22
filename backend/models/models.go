@@ -21,6 +21,16 @@ type User struct {
 	Address            string    `json:"address"`
 	Location           string    `json:"location"`
 	WorkingDays        int       `json:"workingDays"`
+	DOB                string    `json:"dob"`
+	Nationality        string    `json:"nationality"`
+	PersonalEmail      string    `json:"personalEmail"`
+	Gender             string    `json:"gender"`
+	MaritalStatus      string    `json:"maritalStatus"`
+	AccountNumber      string    `json:"accountNumber"`
+	BankName           string    `json:"bankName"`
+	IFSCCode           string    `json:"ifscCode"`
+	PanNo              string    `json:"panNo"`
+	UanNo              string    `json:"uanNo"`
 	AvatarUrl          string    `json:"avatarUrl"`
 	Status             string    `json:"status"` // "present", "absent", "leave"
 	PaidLeaveAvailable int       `json:"paidLeaveAvailable"`
@@ -135,6 +145,16 @@ type UpdateProfileRequest struct {
 	Address              string  `json:"address"`
 	Location             string  `json:"location"`
 	WorkingDays          int     `json:"workingDays"`
+	DOB                  string  `json:"dob"`
+	Nationality          string  `json:"nationality"`
+	PersonalEmail        string  `json:"personalEmail"`
+	Gender               string  `json:"gender"`
+	MaritalStatus        string  `json:"maritalStatus"`
+	AccountNumber        string  `json:"accountNumber"`
+	BankName             string  `json:"bankName"`
+	IFSCCode             string  `json:"ifscCode"`
+	PanNo                string  `json:"panNo"`
+	UanNo                string  `json:"uanNo"`
 	BreakTime            int     `json:"breakTime"`
 	AvatarUrl            string  `json:"avatarUrl"`
 	// Admin fields

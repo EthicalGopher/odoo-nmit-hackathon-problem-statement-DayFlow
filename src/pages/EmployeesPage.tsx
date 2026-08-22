@@ -43,6 +43,24 @@ export const EmployeesPage: React.FC = () => {
   const [modalSalarySaved, setModalSalarySaved] = useState(false);
   const [isSavingModalSalary, setIsSavingModalSalary] = useState(false);
 
+  // Editable Private Info & Bank Details State inside inspection modal (HR Only)
+  const [modalAddress, setModalAddress] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
+  const [modalDob, setModalDob] = useState('');
+  const [modalLocation, setModalLocation] = useState('');
+  const [modalNationality, setModalNationality] = useState('');
+  const [modalPersonalEmail, setModalPersonalEmail] = useState('');
+  const [modalGender, setModalGender] = useState('');
+  const [modalMaritalStatus, setModalMaritalStatus] = useState('');
+  const [modalJoiningDate, setModalJoiningDate] = useState('');
+  const [modalAccountNumber, setModalAccountNumber] = useState('');
+  const [modalBankName, setModalBankName] = useState('');
+  const [modalIfscCode, setModalIfscCode] = useState('');
+  const [modalPanNo, setModalPanNo] = useState('');
+  const [modalUanNo, setModalUanNo] = useState('');
+  const [modalPrivateSaved, setModalPrivateSaved] = useState(false);
+  const [isSavingModalPrivate, setIsSavingModalPrivate] = useState(false);
+
   // Fire / Terminate Employee Modal State
   const [fireModalEmp, setFireModalEmp] = useState<Employee | null>(null);
   const [fireReason, setFireReason] = useState('');
@@ -84,12 +102,10 @@ export const EmployeesPage: React.FC = () => {
 
   const departments = ['All', 'People & Culture', 'Engineering', 'Design', 'Product'];
 
-
   const isHR = role === 'HR';
 
-  // Compute live Login ID preview for HR creation
   const computeLiveLoginID = (name: string) => {
-    const compPrefix = 'OI'; // Odoo India
+    const compPrefix = 'OI';
     const parts = name.trim().split(/\s+/).filter(Boolean);
     let nameCode = 'JODO';
     if (parts.length >= 2) {
@@ -139,6 +155,24 @@ export const EmployeesPage: React.FC = () => {
     setViewOnlyEmployee(emp);
     setViewOnlyTab('resume');
     setModalSalarySaved(false);
+    setModalPrivateSaved(false);
+
+    // Populate Modal Private Info
+    setModalAddress(emp.address || '');
+    setModalPhone(emp.phone || '');
+    setModalDob(emp.dob || '1995-06-15');
+    setModalLocation(emp.location || 'San Francisco, CA');
+    setModalNationality(emp.nationality || 'Indian');
+    setModalPersonalEmail(emp.personalEmail || emp.email);
+    setModalGender(emp.gender || 'Male');
+    setModalMaritalStatus(emp.maritalStatus || 'Single');
+    setModalJoiningDate(emp.joiningDate || '');
+    setModalAccountNumber(emp.accountNumber || '5010023491823');
+    setModalBankName(emp.bankName || 'HDFC Bank Ltd');
+    setModalIfscCode(emp.ifscCode || 'HDFC0001234');
+    setModalPanNo(emp.panNo || 'ABCDE1234F');
+    setModalUanNo(emp.uanNo || '100928374651');
+
     try {
       const pData = await api.getPayroll(emp.employeeId);
       const pr = Array.isArray(pData) ? pData[0] : pData;
@@ -167,6 +201,36 @@ export const EmployeesPage: React.FC = () => {
       setModalStandardAllowance(4167);
       setModalPerformanceBonus(3127.5);
       setModalLta(3127.5);
+    }
+  };
+
+  const handleSaveModalPrivateInfo = async () => {
+    if (!viewOnlyEmployee) return;
+    setIsSavingModalPrivate(true);
+    try {
+      await api.updateProfile(viewOnlyEmployee.employeeId, {
+        address: modalAddress,
+        phone: modalPhone,
+        dob: modalDob,
+        location: modalLocation,
+        nationality: modalNationality,
+        personalEmail: modalPersonalEmail,
+        gender: modalGender,
+        maritalStatus: modalMaritalStatus,
+        joiningDate: modalJoiningDate,
+        accountNumber: modalAccountNumber,
+        bankName: modalBankName,
+        ifscCode: modalIfscCode,
+        panNo: modalPanNo,
+        uanNo: modalUanNo,
+      });
+      await refreshEmployees();
+      setModalPrivateSaved(true);
+      setTimeout(() => setModalPrivateSaved(false), 4000);
+    } catch (err) {
+      console.error('Failed to update employee private info', err);
+    } finally {
+      setIsSavingModalPrivate(false);
     }
   };
 
@@ -237,7 +301,7 @@ export const EmployeesPage: React.FC = () => {
     const matchesStatus =
       statusFilter === 'All' ||
       (statusFilter === 'Present' && emp.status === 'present') ||
-      (statusFilter === 'Half-day' && (emp.status === 'half-day' || emp.status === 'Half-day')) ||
+      (statusFilter === 'Half-day' && (emp.status === 'half-day' || (emp.status as string) === 'Half-day')) ||
       (statusFilter === 'Leave' && emp.status === 'leave') ||
       (statusFilter === 'Absent' && emp.status === 'absent');
 
@@ -348,7 +412,7 @@ export const EmployeesPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEmployees.map(emp => {
           const isPresent = emp.status === 'present';
-          const isHalfDay = emp.status === 'half-day' || emp.status === 'Half-day';
+          const isHalfDay = emp.status === 'half-day' || (emp.status as string) === 'Half-day';
           const isOnLeave = emp.status === 'leave';
           const canFire = isHR && emp.employeeId !== currentUser?.employeeId;
 
@@ -367,7 +431,7 @@ export const EmployeesPage: React.FC = () => {
                       Half-day
                     </span>
                   ) : isOnLeave ? (
-                    <Plane className="w-4 h-4 text-[#E07A5F]" title="Status: On Leave" />
+                    <Plane className="w-4 h-4 text-[#E07A5F]" />
                   ) : (
                     <span className="w-3 h-3 rounded-full bg-[#E06C68] block" title="Status: Absent" />
                   )}
@@ -553,27 +617,197 @@ export const EmployeesPage: React.FC = () => {
 
               {/* 2. Private Info Tab */}
               {viewOnlyTab === 'private' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
-                    <span className="text-[#78726A] block text-[10px]">Date of Birth</span>
-                    <span className="font-mono text-[#E8E3DD] block mt-0.5">Not Provided</span>
-                  </div>
-                  <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
-                    <span className="text-[#78726A] block text-[10px]">Nationality</span>
-                    <span className="text-[#E8E3DD] block mt-0.5">Not Provided</span>
-                  </div>
-                  <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
-                    <span className="text-[#78726A] block text-[10px]">Personal Email</span>
-                    <span className="font-mono text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.email}</span>
-                  </div>
-                  <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
-                    <span className="text-[#78726A] block text-[10px]">Phone Number</span>
-                    <span className="font-mono text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.phone || 'Not Provided'}</span>
-                  </div>
-                  <div className="col-span-2 p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
-                    <span className="text-[#78726A] block text-[10px]">Residing Address</span>
-                    <span className="text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.address || 'Not Provided'}</span>
-                  </div>
+                <div className="space-y-6 text-xs font-carme">
+                  {isHR ? (
+                    <>
+                      <div className="p-3 rounded-xl bg-[#24211F] border border-[#332F2C] text-[#F4A261] flex items-center space-x-2 text-xs font-mono">
+                        <FiCheckCircle className="w-4 h-4 shrink-0 text-[#709775]" />
+                        <span>HR Manager Privileges Active: Edit employee's private information and statutory bank details below.</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* Left Column: Personal Data */}
+                        <div className="lg:col-span-6 space-y-4">
+                          <h4 className="font-crimson font-bold text-base text-[#E8E3DD] border-b border-[#292624] pb-2">
+                            Personal Data
+                          </h4>
+
+                          <div className="space-y-3">
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold">Residing Address</label>
+                              <input
+                                type="text"
+                                value={modalAddress}
+                                onChange={e => setModalAddress(e.target.value)}
+                                placeholder="Address..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold">Phone Number</label>
+                              <input
+                                type="text"
+                                value={modalPhone}
+                                onChange={e => setModalPhone(e.target.value)}
+                                placeholder="Phone..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold">Date of Birth</label>
+                              <input
+                                type="date"
+                                value={modalDob}
+                                onChange={e => setModalDob(e.target.value)}
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold">Work Location</label>
+                              <input
+                                type="text"
+                                value={modalLocation}
+                                onChange={e => setModalLocation(e.target.value)}
+                                placeholder="Location..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold">Nationality</label>
+                              <input
+                                type="text"
+                                value={modalNationality}
+                                onChange={e => setModalNationality(e.target.value)}
+                                placeholder="Nationality..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold">Personal Email</label>
+                              <input
+                                type="email"
+                                value={modalPersonalEmail}
+                                onChange={e => setModalPersonalEmail(e.target.value)}
+                                placeholder="Personal Email..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Column: Bank Details */}
+                        <div className="lg:col-span-6 space-y-4">
+                          <h4 className="font-crimson font-bold text-base text-[#E8E3DD] border-b border-[#292624] pb-2">
+                            Bank Account & Statutory Info
+                          </h4>
+
+                          <div className="space-y-3 font-mono">
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold font-sans">Account Number</label>
+                              <input
+                                type="text"
+                                value={modalAccountNumber}
+                                onChange={e => setModalAccountNumber(e.target.value)}
+                                placeholder="Account Number..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold font-sans">Bank Name</label>
+                              <input
+                                type="text"
+                                value={modalBankName}
+                                onChange={e => setModalBankName(e.target.value)}
+                                placeholder="Bank Name..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold font-sans">IFSC Code</label>
+                              <input
+                                type="text"
+                                value={modalIfscCode}
+                                onChange={e => setModalIfscCode(e.target.value)}
+                                placeholder="IFSC Code..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold font-sans">PAN Number</label>
+                              <input
+                                type="text"
+                                value={modalPanNo}
+                                onChange={e => setModalPanNo(e.target.value)}
+                                placeholder="PAN Number..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+
+                            <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
+                              <label className="text-[#78726A] text-[11px] block font-semibold font-sans">UAN Number</label>
+                              <input
+                                type="text"
+                                value={modalUanNo}
+                                onChange={e => setModalUanNo(e.target.value)}
+                                placeholder="UAN Number..."
+                                className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-1.5 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {modalPrivateSaved && (
+                        <div className="p-3 rounded-xl bg-[#1C251F] border border-[#709775] text-[#709775] flex items-center space-x-2 font-mono">
+                          <FiCheckCircle className="w-4 h-4" />
+                          <span>Employee Private & Bank details updated successfully!</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end pt-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveModalPrivateInfo}
+                          disabled={isSavingModalPrivate}
+                          className="px-6 py-2 rounded-xl bg-[#709775] text-white font-bold hover:bg-[#5C8260] transition-colors shadow-lg flex items-center space-x-2 disabled:opacity-50"
+                        >
+                          <FiCheckCircle className="w-4 h-4" />
+                          <span>{isSavingModalPrivate ? 'Saving...' : 'Save Private Details'}</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 font-mono">
+                      <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
+                        <span className="text-[#78726A] block text-[10px]">Date of Birth</span>
+                        <span className="text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.dob || '1995-06-15'}</span>
+                      </div>
+                      <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
+                        <span className="text-[#78726A] block text-[10px]">Nationality</span>
+                        <span className="text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.nationality || 'Indian'}</span>
+                      </div>
+                      <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
+                        <span className="text-[#78726A] block text-[10px]">Personal Email</span>
+                        <span className="text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.email}</span>
+                      </div>
+                      <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
+                        <span className="text-[#78726A] block text-[10px]">Phone Number</span>
+                        <span className="text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.phone || 'Not Provided'}</span>
+                      </div>
+                      <div className="col-span-2 p-3 bg-[#141312] border border-[#2B2825] rounded-xl">
+                        <span className="text-[#78726A] block text-[10px]">Residing Address</span>
+                        <span className="text-[#E8E3DD] block mt-0.5">{viewOnlyEmployee.address || 'Not Provided'}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

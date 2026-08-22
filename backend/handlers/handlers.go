@@ -588,6 +588,36 @@ func UpdateEmployeeProfile(c fiber.Ctx) error {
 	if req.WorkingDays > 0 {
 		emp.WorkingDays = req.WorkingDays
 	}
+	if req.DOB != "" {
+		emp.DOB = req.DOB
+	}
+	if req.Nationality != "" {
+		emp.Nationality = req.Nationality
+	}
+	if req.PersonalEmail != "" {
+		emp.PersonalEmail = req.PersonalEmail
+	}
+	if req.Gender != "" {
+		emp.Gender = req.Gender
+	}
+	if req.MaritalStatus != "" {
+		emp.MaritalStatus = req.MaritalStatus
+	}
+	if req.AccountNumber != "" {
+		emp.AccountNumber = req.AccountNumber
+	}
+	if req.BankName != "" {
+		emp.BankName = req.BankName
+	}
+	if req.IFSCCode != "" {
+		emp.IFSCCode = req.IFSCCode
+	}
+	if req.PanNo != "" {
+		emp.PanNo = req.PanNo
+	}
+	if req.UanNo != "" {
+		emp.UanNo = req.UanNo
+	}
 	if req.AvatarUrl != "" {
 		emp.AvatarUrl = req.AvatarUrl
 	}

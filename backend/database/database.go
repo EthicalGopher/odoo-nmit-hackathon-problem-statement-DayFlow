@@ -83,10 +83,5 @@ func InitDB() *gorm.DB {
 }
 
 func SeedData(db *gorm.DB) {
-	// Purge any test admin or dummy test accounts from the database
-	db.Where("name LIKE ? OR email LIKE ? OR name LIKE ? OR email LIKE ?", "%Test%", "%test%", "%Alex Mercer%", "%alex.mercer%").Delete(&models.User{})
-	db.Where("employee_name LIKE ? OR employee_name LIKE ?", "%Test%", "%Alex Mercer%").Delete(&models.LeaveRequest{})
-	db.Where("employee_name LIKE ? OR employee_name LIKE ?", "%Test%", "%Alex Mercer%").Delete(&models.Attendance{})
-	db.Where("employee_name LIKE ? OR employee_name LIKE ?", "%Test%", "%Alex Mercer%").Delete(&models.Payroll{})
-	log.Println("Database initialized cleanly. All test admin accounts purged.")
+	log.Println("Database initialized cleanly.")
 }

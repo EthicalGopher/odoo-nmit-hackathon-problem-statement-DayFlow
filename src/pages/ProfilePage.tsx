@@ -33,20 +33,14 @@ export const ProfilePage: React.FC = () => {
   const [whatILove, setWhatILove] = useState('');
   const [interests, setInterests] = useState('');
 
-  // Private Info Tab - Fully Editable
+  // Private Info Tab - Read Only for Users (Managed by HR from /employees)
   const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [nationality, setNationality] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [gender, setGender] = useState('');
-  const [maritalStatus, setMaritalStatus] = useState('');
   const [joiningDate, setJoiningDate] = useState('');
   const [location, setLocation] = useState(currentUser?.location || 'San Francisco, CA');
-  const [privateSaved, setPrivateSaved] = useState(false);
-  const [isSavingPrivate, setIsSavingPrivate] = useState(false);
-
-  // Bank Details State - Editable
   const [accountNumber, setAccountNumber] = useState('');
   const [bankName, setBankName] = useState('');
   const [ifscCode, setIfscCode] = useState('');
@@ -110,11 +104,19 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       setAddress(currentUser.address || '');
-      setPhone(currentUser.phone || '');
       setLocation(currentUser.location || 'San Francisco, CA');
       setWorkingDays(currentUser.workingDays || 5);
       setJoiningDate(currentUser.joiningDate || '');
       setAvatarUrl(currentUser.avatarUrl || '');
+      setDob(currentUser.dob || '');
+      setNationality(currentUser.nationality || '');
+      setPersonalEmail(currentUser.personalEmail || currentUser.email || '');
+      setGender(currentUser.gender || '');
+      setAccountNumber(currentUser.accountNumber || '');
+      setBankName(currentUser.bankName || '');
+      setIfscCode(currentUser.ifscCode || '');
+      setPanNo(currentUser.panNo || '');
+      setUanNo(currentUser.uanNo || '');
 
       api.getPayroll(currentUser.employeeId).then(pData => {
         const pr = Array.isArray(pData) ? pData[0] : pData;
@@ -147,26 +149,6 @@ export const ProfilePage: React.FC = () => {
         }
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSavePrivateInfo = async () => {
-    if (!currentUser) return;
-    setIsSavingPrivate(true);
-    try {
-      await api.updateProfile(currentUser.employeeId, {
-        address,
-        phone,
-        location,
-        workingDays,
-        joiningDate,
-      });
-      setPrivateSaved(true);
-      setTimeout(() => setPrivateSaved(false), 4000);
-    } catch (err) {
-      console.error('Failed to save private info', err);
-    } finally {
-      setIsSavingPrivate(false);
     }
   };
 
@@ -489,9 +471,17 @@ export const ProfilePage: React.FC = () => {
           </div>
         )}
 
-        {/* ================= B. PRIVATE INFO TAB (FULLY EDITABLE) ================= */}
+        {/* ================= B. PRIVATE INFO TAB (READ-ONLY FOR USERS - EDITABLE BY HR FROM EMPLOYEES ROUTE ONLY) ================= */}
         {activeTab === 'private' && (
           <div className="space-y-6 text-xs">
+            {/* HR Notice Banner */}
+            <div className="p-4 rounded-xl bg-[#24211F] border border-[#332F2C] text-[#F4A261] flex items-center space-x-3 text-xs font-mono">
+              <FiLock className="w-4 h-4 shrink-0 text-[#E07A5F]" />
+              <span>
+                Private Information & Statutory Bank details can only be edited by the <strong>HR Manager</strong> via the Employees Roster route (<code>/employees</code>).
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Left Sub-Column: Personal Data */}
               <div className="lg:col-span-6 space-y-4">
@@ -504,9 +494,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold">Date of Birth</label>
                     <input
                       type="date"
-                      value={dob}
-                      onChange={e => setDob(e.target.value)}
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={dob || '1995-06-15'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -514,10 +504,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold">Residing Address</label>
                     <input
                       type="text"
-                      value={address}
-                      onChange={e => setAddress(e.target.value)}
-                      placeholder="e.g. 742 Evergreen Terrace, San Francisco, CA"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={address || '100 Pine Street, Suite 2400, San Francisco, CA'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -525,33 +514,29 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold">Work Location / City</label>
                     <input
                       type="text"
-                      value={location}
-                      onChange={e => setLocation(e.target.value)}
-                      placeholder="e.g. San Francisco, CA or Mumbai, India"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={location || 'San Francisco, CA'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
                   <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
                     <label className="text-[#78726A] text-[11px] block font-semibold">Working Days Per Week</label>
-                    <select
-                      value={workingDays}
-                      onChange={e => setWorkingDays(Number(e.target.value))}
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
-                    >
-                      <option value={5}>5 Days / Week (Saturday & Sunday Closed)</option>
-                      <option value={6}>6 Days / Week (Only Sunday Closed - Saturday Open)</option>
-                    </select>
+                    <input
+                      type="text"
+                      value={`${workingDays || 5} Days / Week`}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
+                    />
                   </div>
 
                   <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
                     <label className="text-[#78726A] text-[11px] block font-semibold">Nationality</label>
                     <input
                       type="text"
-                      value={nationality}
-                      onChange={e => setNationality(e.target.value)}
-                      placeholder="e.g. Indian"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={nationality || 'Indian / American'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -559,10 +544,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold">Personal Email</label>
                     <input
                       type="email"
-                      value={personalEmail}
-                      onChange={e => setPersonalEmail(e.target.value)}
-                      placeholder="e.g. user.personal@gmail.com"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={personalEmail || currentUser?.email || 'user@dayflow.com'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -570,31 +554,19 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold">Gender</label>
                     <input
                       type="text"
-                      value={gender}
-                      onChange={e => setGender(e.target.value)}
-                      placeholder="e.g. Male / Female / Non-binary"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
-                    />
-                  </div>
-
-                  <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
-                    <label className="text-[#78726A] text-[11px] block font-semibold">Marital Status</label>
-                    <input
-                      type="text"
-                      value={maritalStatus}
-                      onChange={e => setMaritalStatus(e.target.value)}
-                      placeholder="e.g. Single / Married"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={gender || 'Male'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
                   <div className="p-3 bg-[#141312] border border-[#2B2825] rounded-xl space-y-1">
                     <label className="text-[#78726A] text-[11px] block font-semibold">Date of Joining</label>
                     <input
-                      type="date"
-                      value={joiningDate}
-                      onChange={e => setJoiningDate(e.target.value)}
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      type="text"
+                      value={joiningDate || currentUser?.joiningDate || '2024-01-15'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -611,10 +583,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold font-sans">Account Number</label>
                     <input
                       type="text"
-                      value={accountNumber}
-                      onChange={e => setAccountNumber(e.target.value)}
-                      placeholder="e.g. 5010023491823"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={accountNumber || '5010023491823'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -622,10 +593,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold font-sans">Bank Name</label>
                     <input
                       type="text"
-                      value={bankName}
-                      onChange={e => setBankName(e.target.value)}
-                      placeholder="e.g. HDFC Bank Ltd"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={bankName || 'HDFC Bank Ltd'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -633,10 +603,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold font-sans">IFSC Code</label>
                     <input
                       type="text"
-                      value={ifscCode}
-                      onChange={e => setIfscCode(e.target.value)}
-                      placeholder="e.g. HDFC0001234"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={ifscCode || 'HDFC0001234'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -644,10 +613,9 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold font-sans">PAN Number</label>
                     <input
                       type="text"
-                      value={panNo}
-                      onChange={e => setPanNo(e.target.value)}
-                      placeholder="e.g. ABCDE1234F"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={panNo || 'ABCDE1234F'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
 
@@ -655,35 +623,13 @@ export const ProfilePage: React.FC = () => {
                     <label className="text-[#78726A] text-[11px] block font-semibold font-sans">UAN Number</label>
                     <input
                       type="text"
-                      value={uanNo}
-                      onChange={e => setUanNo(e.target.value)}
-                      placeholder="e.g. 100928374651"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-lg px-3 py-2 text-[#E8E3DD] focus:outline-none focus:border-[#E07A5F]"
+                      value={uanNo || '100928374651'}
+                      disabled
+                      className="w-full bg-[#1C1A19]/50 border border-[#332F2C] rounded-lg px-3 py-2 text-[#A39C95] cursor-not-allowed"
                     />
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Save Confirmation */}
-            {privateSaved && (
-              <div className="p-3 rounded-xl bg-[#1C251F] border border-[#709775] text-[#709775] flex items-center space-x-2 font-mono">
-                <FiCheckCircle className="w-4 h-4" />
-                <span>Private Information saved successfully!</span>
-              </div>
-            )}
-
-            {/* Submit Action */}
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={handleSavePrivateInfo}
-                disabled={isSavingPrivate}
-                className="px-6 py-2.5 rounded-xl bg-[#E07A5F] text-white font-bold hover:bg-[#D0694E] transition-colors shadow-lg flex items-center space-x-2 disabled:opacity-50"
-              >
-                <FiSave className="w-4 h-4" />
-                <span>{isSavingPrivate ? 'Saving...' : 'Save Private Info'}</span>
-              </button>
             </div>
           </div>
         )}
