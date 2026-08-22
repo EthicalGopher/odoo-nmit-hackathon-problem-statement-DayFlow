@@ -312,20 +312,18 @@ export const ProfilePage: React.FC = () => {
           <span>Private Info</span>
         </button>
 
-        {/* Salary Info Tab strictly visible ONLY to HR Officers */}
-        {isHR && (
-          <button
-            onClick={() => setActiveTab('salary')}
-            className={`px-5 py-2.5 rounded-t-xl transition-all flex items-center space-x-2 ${
-              activeTab === 'salary'
-                ? 'bg-[#1C1A19] border-t-2 border-[#709775] text-[#709775] shadow-md'
-                : 'text-[#A39C95] hover:text-[#E8E3DD] hover:bg-[#24211F]'
-            }`}
-          >
-            <FiDollarSign className="w-4 h-4 text-[#709775]" />
-            <span>Salary Info</span>
-          </button>
-        )}
+        {/* Salary Info Tab - Visible to all employees on their profile */}
+        <button
+          onClick={() => setActiveTab('salary')}
+          className={`px-5 py-2.5 rounded-t-xl transition-all flex items-center space-x-2 ${
+            activeTab === 'salary'
+              ? 'bg-[#1C1A19] border-t-2 border-[#709775] text-[#709775] shadow-md'
+              : 'text-[#A39C95] hover:text-[#E8E3DD] hover:bg-[#24211F]'
+          }`}
+        >
+          <FiDollarSign className="w-4 h-4 text-[#709775]" />
+          <span>Salary Info</span>
+        </button>
 
         <button
           onClick={() => setActiveTab('security')}
@@ -691,8 +689,18 @@ export const ProfilePage: React.FC = () => {
         )}
 
         {/* ================= C. SALARY INFO TAB (LIVE DYNAMIC CALCULATIONS & CUSTOMIZATION) ================= */}
-        {activeTab === 'salary' && isHR && (
+        {activeTab === 'salary' && (
           <div className="space-y-6 text-xs">
+            {!isHR && (
+              <div className="p-3 bg-[#141312] border border-[#332F2C] rounded-xl flex items-center justify-between font-mono text-[11px] text-[#A39C95]">
+                <span className="flex items-center space-x-2">
+                  <FiLock className="w-4 h-4 text-[#E07A5F]" />
+                  <span>Read-Only Mode: Official salary compensation structure. Contact HR Operations for changes.</span>
+                </span>
+                <span className="px-2.5 py-1 rounded bg-[#24211F] border border-[#332F2C] text-[#709775] font-bold">Confidential</span>
+              </div>
+            )}
+
             {/* Header Controls: Month Wage & Working Days */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-[#141312] border border-[#2B2825] rounded-2xl">
               <div className="space-y-4">
@@ -702,9 +710,10 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="number"
                       value={monthWage}
+                      disabled={!isHR}
                       onChange={e => handleMonthWageChange(Number(e.target.value) || 0)}
                       placeholder="50000"
-                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-xl px-3 py-2 text-sm font-mono font-bold text-[#E07A5F] focus:outline-none focus:border-[#E07A5F]"
+                      className="w-full bg-[#1C1A19] border border-[#332F2C] rounded-xl px-3 py-2 text-sm font-mono font-bold text-[#E07A5F] focus:outline-none focus:border-[#E07A5F] disabled:opacity-80 disabled:cursor-not-allowed"
                     />
                     <span className="text-xs text-[#A39C95] font-mono shrink-0">/ Month</span>
                   </div>
@@ -727,8 +736,9 @@ export const ProfilePage: React.FC = () => {
                   <input
                     type="number"
                     value={workingDays}
+                    disabled={!isHR}
                     onChange={e => setWorkingDays(Number(e.target.value) || 5)}
-                    className="w-24 bg-[#1C1A19] border border-[#332F2C] rounded-xl px-3 py-2 text-xs font-mono text-[#E8E3DD] focus:outline-none"
+                    className="w-24 bg-[#1C1A19] border border-[#332F2C] rounded-xl px-3 py-2 text-xs font-mono text-[#E8E3DD] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -738,8 +748,9 @@ export const ProfilePage: React.FC = () => {
                     <input
                       type="number"
                       value={breakTime}
+                      disabled={!isHR}
                       onChange={e => setBreakTime(Number(e.target.value) || 1)}
-                      className="w-24 bg-[#1C1A19] border border-[#332F2C] rounded-xl px-3 py-2 text-xs font-mono text-[#E8E3DD] focus:outline-none"
+                      className="w-24 bg-[#1C1A19] border border-[#332F2C] rounded-xl px-3 py-2 text-xs font-mono text-[#E8E3DD] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                     />
                     <span className="text-xs text-[#A39C95] font-mono">/hrs</span>
                   </div>
@@ -752,7 +763,7 @@ export const ProfilePage: React.FC = () => {
               {/* Left Column: Salary Components */}
               <div className="lg:col-span-7 space-y-4">
                 <h4 className="font-crimson font-bold text-lg text-[#E8E3DD] border-b border-[#292624] pb-2 font-sans">
-                  Salary Component Breakdown & Customization
+                  Salary Component Breakdown {isHR ? '& Customization' : '(Read-Only)'}
                 </h4>
 
                 <div className="space-y-4 text-[11px]">
@@ -765,8 +776,9 @@ export const ProfilePage: React.FC = () => {
                           <input
                             type="number"
                             value={basicSalary}
+                            disabled={!isHR}
                             onChange={e => setBasicSalary(Number(e.target.value) || 0)}
-                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E07A5F] focus:outline-none"
+                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E07A5F] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                           />
                           <span className="text-[#A39C95]">₹ / month</span>
                         </div>
@@ -790,8 +802,9 @@ export const ProfilePage: React.FC = () => {
                           <input
                             type="number"
                             value={hra}
+                            disabled={!isHR}
                             onChange={e => setHra(Number(e.target.value) || 0)}
-                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none"
+                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                           />
                           <span className="text-[#A39C95]">₹ / month</span>
                         </div>
@@ -815,8 +828,9 @@ export const ProfilePage: React.FC = () => {
                           <input
                             type="number"
                             value={standardAllowance}
+                            disabled={!isHR}
                             onChange={e => setStandardAllowance(Number(e.target.value) || 0)}
-                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none"
+                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                           />
                           <span className="text-[#A39C95]">₹ / month</span>
                         </div>
@@ -840,8 +854,9 @@ export const ProfilePage: React.FC = () => {
                           <input
                             type="number"
                             value={performanceBonus}
+                            disabled={!isHR}
                             onChange={e => setPerformanceBonus(Number(e.target.value) || 0)}
-                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none"
+                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                           />
                           <span className="text-[#A39C95]">₹ / month</span>
                         </div>
@@ -865,8 +880,9 @@ export const ProfilePage: React.FC = () => {
                           <input
                             type="number"
                             value={lta}
+                            disabled={!isHR}
                             onChange={e => setLta(Number(e.target.value) || 0)}
-                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none"
+                            className="w-24 bg-transparent text-right font-mono font-bold text-[#E8E3DD] focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
                           />
                           <span className="text-[#A39C95]">₹ / month</span>
                         </div>
@@ -970,17 +986,19 @@ export const ProfilePage: React.FC = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={handleSaveSalaryDetails}
-                disabled={isSavingSalary}
-                className="px-6 py-2.5 rounded-xl bg-[#709775] text-white font-bold hover:bg-[#5C8260] transition-colors shadow-lg flex items-center space-x-2 disabled:opacity-50"
-              >
-                <FiSave className="w-4 h-4" />
-                <span>{isSavingSalary ? 'Saving...' : 'Save Salary Details'}</span>
-              </button>
-            </div>
+            {isHR && (
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveSalaryDetails}
+                  disabled={isSavingSalary}
+                  className="px-6 py-2.5 rounded-xl bg-[#709775] text-white font-bold hover:bg-[#5C8260] transition-colors shadow-lg flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <FiSave className="w-4 h-4" />
+                  <span>{isSavingSalary ? 'Saving...' : 'Save Salary Details'}</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import type { Employee, Payroll, AttendanceRecord, ReportAnalytics } from '../types';
@@ -24,7 +25,12 @@ import {
 import { Plane } from 'lucide-react';
 
 export const ReportsPage: React.FC = () => {
-  const { allEmployees } = useAuth();
+  const { allEmployees, role, currentUser } = useAuth();
+  const isHR = role === 'HR' || currentUser?.role === 'HR';
+
+  if (!isHR) {
+    return <Navigate to="/employees" replace />;
+  }
 
   const [activeTab, setActiveTab] = useState<'overview' | 'salary' | 'attendance'>('overview');
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
@@ -43,7 +49,9 @@ export const ReportsPage: React.FC = () => {
   const [attendanceSearch, setAttendanceSearch] = useState('');
   const [attendanceDeptFilter, setAttendanceDeptFilter] = useState('All');
 
-  const departments = ['All', 'People & Culture', 'Engineering', 'Design', 'Product'];
+  // Dynamic department list from allEmployees
+  const uniqueDepts = Array.from(new Set(allEmployees.map(e => e.department).filter(Boolean)));
+  const departments = ['All', ...Array.from(new Set([...uniqueDepts, 'People & Culture', 'Engineering', 'Design', 'Product']))];
 
   useEffect(() => {
     // Load general analytics
@@ -56,7 +64,7 @@ export const ReportsPage: React.FC = () => {
 
     // Load attendance records
     api.getAttendanceRecords().then(setAttendanceLogs).catch(console.error);
-  }, []);
+  }, [allEmployees]);
 
   const handleOpenSalarySlip = async (emp: Employee) => {
     setSelectedEmpForSlip(emp);
@@ -93,21 +101,111 @@ export const ReportsPage: React.FC = () => {
     }
   };
 
-  // Recharts Chart Data
-  const attendanceData = [
-    { day: 'Mon', present: 5, absent: 0, leave: 0 },
-    { day: 'Tue', present: 4, absent: 0, leave: 1 },
-    { day: 'Wed', present: 3, absent: 1, leave: 1 },
-    { day: 'Thu', present: 4, absent: 0, leave: 1 },
-    { day: 'Fri', present: 4, absent: 1, leave: 0 },
-  ];
+  // Compute Dynamic Attendance Rate
+  const computedAttendanceRate = (() => {
+    if (analytics?.attendanceRate !== undefined && analytics.attendanceRate !== 89.5) {
+      return analytics.attendanceRate;
+    }
+    if (attendanceLogs.length > 0) {
+      const presentLogs = attendanceLogs.filter(l => l.status === 'Present').length;
+      return Math.round((presentLogs / attendanceLogs.length) * 100 * 10) / 10;
+    }
+    if (allEmployees.length > 0) {
+      const presentEmps = allEmployees.filter(e => e.status === 'present').length;
+      return Math.round((presentEmps / allEmployees.length) * 100 * 10) / 10;
+    }
+    return 100;
+  })();
 
-  const departmentPayrollData = [
-    { dept: 'Engineering', amount: 175000 },
-    { dept: 'People & Culture', amount: 95000 },
-    { dept: 'Design', amount: 75000 },
-    { dept: 'Product', amount: 70000 },
-  ];
+  // Compute Dynamic Monthly Payroll Total
+  const computedMonthlyPayroll = (() => {
+    if (payrolls.length > 0) {
+      const sum = payrolls.reduce((acc, p) => acc + (p.netSalary || 0), 0);
+      if (sum > 0) return sum;
+    }
+    if (analytics?.totalMonthlyPayroll && analytics.totalMonthlyPayroll !== 415000) {
+      return analytics.totalMonthlyPayroll;
+    }
+    return allEmployees.reduce((acc, emp) => {
+      const pr = payrolls.find(p => p.employeeId === emp.employeeId);
+      const mw = pr?.monthWage || 75000;
+      const basic = pr?.basicSalary || mw * 0.50;
+      const pf = pr?.providentFund || basic * 0.12;
+      return acc + (pr?.netSalary || (mw - (pf + 200)));
+    }, 0);
+  })();
+
+  // Compute Dynamic Weekly Attendance Chart Data
+  const attendanceData = (() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const now = new Date();
+    const currentDayIdx = now.getDay();
+    const diffToMon = currentDayIdx === 0 ? -6 : 1 - currentDayIdx;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon);
+
+    return days.map((dayName, idx) => {
+      const dateObj = new Date(monday);
+      dateObj.setDate(monday.getDate() + idx);
+      const dateStr = dateObj.toISOString().split('T')[0];
+
+      const dayLogs = attendanceLogs.filter(l => l.date === dateStr);
+      let present = dayLogs.filter(l => l.status === 'Present').length;
+      let leave = dayLogs.filter(l => l.status === 'Leave').length;
+      let absent = dayLogs.filter(l => l.status === 'Absent').length;
+
+      const isToday = dateStr === now.toISOString().split('T')[0];
+      if (dayLogs.length === 0 && isToday && allEmployees.length > 0) {
+        present = allEmployees.filter(e => e.status === 'present').length;
+        leave = allEmployees.filter(e => e.status === 'leave').length;
+        absent = allEmployees.filter(e => e.status === 'absent').length;
+      } else if (dayLogs.length === 0) {
+        const weekdayLogs = attendanceLogs.filter(l => {
+          const d = new Date(l.date);
+          return !isNaN(d.getTime()) && (d.getDay() === (idx + 1));
+        });
+        if (weekdayLogs.length > 0) {
+          present = weekdayLogs.filter(l => l.status === 'Present').length;
+          leave = weekdayLogs.filter(l => l.status === 'Leave').length;
+          absent = weekdayLogs.filter(l => l.status === 'Absent').length;
+        }
+      }
+
+      return { day: dayName, present, leave, absent };
+    });
+  })();
+
+  // Compute Dynamic Department Salary Allocation Chart Data
+  const departmentPayrollData = (() => {
+    const deptTotals: Record<string, number> = {};
+
+    allEmployees.forEach(emp => {
+      const dept = emp.department || 'Engineering';
+      const pr = payrolls.find(p => p.employeeId === emp.employeeId);
+      const mw = pr?.monthWage || 75000;
+      const basic = pr?.basicSalary || mw * 0.50;
+      const pf = pr?.providentFund || basic * 0.12;
+      const net = pr?.netSalary || (mw - (pf + 200));
+
+      deptTotals[dept] = (deptTotals[dept] || 0) + net;
+    });
+
+    const entries = Object.entries(deptTotals).map(([dept, amount]) => ({
+      dept,
+      amount: Math.round(amount),
+    }));
+
+    if (entries.length === 0) {
+      return [
+        { dept: 'Engineering', amount: 0 },
+        { dept: 'People & Culture', amount: 0 },
+        { dept: 'Design', amount: 0 },
+        { dept: 'Product', amount: 0 },
+      ];
+    }
+
+    return entries;
+  })();
 
   // Filtering for Salary Slips
   const filteredEmployeesForSalary = allEmployees.filter(emp => {
@@ -203,7 +301,7 @@ export const ReportsPage: React.FC = () => {
             <div className="bg-[#1C1A19] border border-[#332F2C] rounded-2xl p-5 shadow-xl space-y-1">
               <span className="text-xs text-[#78726A] font-semibold uppercase tracking-wider">Attendance Rate</span>
               <div className="font-mono text-3xl font-extrabold text-[#709775]">
-                {analytics?.attendanceRate || 89.5}%
+                {computedAttendanceRate}%
               </div>
               <span className="text-[11px] text-[#A39C95]">Avg across company</span>
             </div>
@@ -211,7 +309,7 @@ export const ReportsPage: React.FC = () => {
             <div className="bg-[#1C1A19] border border-[#332F2C] rounded-2xl p-5 shadow-xl space-y-1">
               <span className="text-xs text-[#78726A] font-semibold uppercase tracking-wider">Monthly Payroll</span>
               <div className="font-mono text-3xl font-extrabold text-[#F4A261]">
-                ₹{(analytics?.totalMonthlyPayroll || 415000).toLocaleString()}
+                ₹{computedMonthlyPayroll.toLocaleString()}
               </div>
               <span className="text-[11px] text-[#A39C95]">Net company commitment</span>
             </div>
@@ -219,7 +317,7 @@ export const ReportsPage: React.FC = () => {
             <div className="bg-[#1C1A19] border border-[#332F2C] rounded-2xl p-5 shadow-xl space-y-1">
               <span className="text-xs text-[#78726A] font-semibold uppercase tracking-wider">Active Employees</span>
               <div className="font-mono text-3xl font-extrabold text-[#E8E3DD]">
-                {allEmployees.length || 5}
+                {allEmployees.length}
               </div>
               <span className="text-[11px] text-[#A39C95]">100% onboarded</span>
             </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiX, FiPrinter } from 'react-icons/fi';
 import type { Payroll, Employee } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 interface SalarySlipModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export const SalarySlipModal: React.FC<SalarySlipModalProps> = ({
   payroll,
   employee,
 }) => {
+  const { currentUser, allEmployees } = useAuth();
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
@@ -31,16 +34,38 @@ export const SalarySlipModal: React.FC<SalarySlipModalProps> = ({
 
   const totalDeductions = payroll.providentFund + payroll.professionalTax;
 
+  const companyName =
+    employee.companyName ||
+    currentUser?.companyName ||
+    allEmployees.find(e => e.companyName)?.companyName ||
+    'Odoo India';
+
+  const companyAddress =
+    employee.address && employee.address !== 'Pending profile update'
+      ? employee.address
+      : currentUser?.address && currentUser.address !== 'Pending profile update'
+      ? currentUser.address
+      : employee.location || currentUser?.location || 'Gujarat, India';
+
+  const cleanCompCode = companyName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'DFMS';
+  const companyRegId = `REG-${cleanCompCode}-2026`;
+
+  const now = new Date();
+  const monthName = now.toLocaleString('en-US', { month: 'short' });
+  const year = now.getFullYear();
+  const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+  const payPeriodStr = `Pay Period: ${monthName} 01 – ${monthName} ${lastDay}, ${year}`;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[#1C1A19] border border-[#383330] w-full max-w-2xl rounded-2xl shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-[#292624]">
           <div className="flex items-center space-x-2">
             <div className="w-7 h-7 rounded-md bg-[#E07A5F] flex items-center justify-center text-white font-bold font-crimson text-sm">
-              D
+              {companyName.charAt(0)}
             </div>
             <h2 className="font-crimson text-lg font-bold text-[#E8E3DD]">
-              Official Salary Pay Slip — August 2026
+              Official Salary Pay Slip — {monthName} {year}
             </h2>
           </div>
           <div className="flex items-center space-x-2">
@@ -64,20 +89,20 @@ export const SalarySlipModal: React.FC<SalarySlipModalProps> = ({
           <div className="flex items-start justify-between border-b border-[#292624] pb-4">
             <div>
               <h3 className="font-crimson text-2xl font-bold text-[#E8E3DD]">
-                Dayflow Technologies Inc.
+                {companyName}
               </h3>
               <p className="text-xs text-[#A39C95]">
-                100 Pine Street, Suite 2400, San Francisco, CA 94111
+                {companyAddress}
               </p>
               <p className="text-[11px] text-[#78726A] font-mono mt-0.5">
-                EIN / Reg: US-9842104-DF
+                Company Tax / Reg ID: {companyRegId}
               </p>
             </div>
             <div className="text-right">
               <span className="inline-block px-3 py-1 bg-[#24211F] border border-[#332F2C] rounded-lg text-xs font-bold text-[#E07A5F] font-mono">
                 CONFIDENTIAL PAYSLIP
               </span>
-              <p className="text-xs text-[#A39C95] mt-1">Pay Period: Aug 01 – Aug 31, 2026</p>
+              <p className="text-xs text-[#A39C95] mt-1">{payPeriodStr}</p>
             </div>
           </div>
 
@@ -101,15 +126,15 @@ export const SalarySlipModal: React.FC<SalarySlipModalProps> = ({
                 Earnings (Gross Components)
               </div>
               <div className="p-4 space-y-2 text-[#A39C95]">
-                <div className="flex justify-between"><span>Basic Salary (50%)</span><span className="font-mono text-[#E8E3DD]">${payroll.basicSalary.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>House Rent Allowance (HRA)</span><span className="font-mono text-[#E8E3DD]">${payroll.hra.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Standard Allowance</span><span className="font-mono text-[#E8E3DD]">${payroll.standardAllowance.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Performance Bonus</span><span className="font-mono text-[#E8E3DD]">${payroll.performanceBonus.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Leave Travel Allowance</span><span className="font-mono text-[#E8E3DD]">${payroll.leaveTravelAllowance.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Fixed Allowance</span><span className="font-mono text-[#E8E3DD]">${payroll.fixedAllowance.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Basic Salary (50%)</span><span className="font-mono text-[#E8E3DD]">₹{payroll.basicSalary.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>House Rent Allowance (HRA)</span><span className="font-mono text-[#E8E3DD]">₹{payroll.hra.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Standard Allowance</span><span className="font-mono text-[#E8E3DD]">₹{payroll.standardAllowance.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Performance Bonus</span><span className="font-mono text-[#E8E3DD]">₹{payroll.performanceBonus.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Leave Travel Allowance</span><span className="font-mono text-[#E8E3DD]">₹{payroll.leaveTravelAllowance.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Fixed Allowance</span><span className="font-mono text-[#E8E3DD]">₹{payroll.fixedAllowance.toLocaleString()}</span></div>
                 <div className="pt-2 border-t border-[#292624] flex justify-between font-bold text-[#E8E3DD]">
                   <span>Total Gross Earnings</span>
-                  <span className="font-mono">${grossEarnings.toLocaleString()}</span>
+                  <span className="font-mono">₹{grossEarnings.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -119,11 +144,11 @@ export const SalarySlipModal: React.FC<SalarySlipModalProps> = ({
                 Deductions
               </div>
               <div className="p-4 space-y-2 text-[#A39C95]">
-                <div className="flex justify-between"><span>Provident Fund (PF - 12%)</span><span className="font-mono text-[#E8E3DD]">${payroll.providentFund.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Professional Tax</span><span className="font-mono text-[#E8E3DD]">${payroll.professionalTax.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Provident Fund (PF - 12%)</span><span className="font-mono text-[#E8E3DD]">₹{payroll.providentFund.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Professional Tax</span><span className="font-mono text-[#E8E3DD]">₹{payroll.professionalTax.toLocaleString()}</span></div>
                 <div className="pt-2 border-t border-[#292624] flex justify-between font-bold text-[#E66868]">
                   <span>Total Deductions</span>
-                  <span className="font-mono">${totalDeductions.toLocaleString()}</span>
+                  <span className="font-mono">₹{totalDeductions.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -135,7 +160,7 @@ export const SalarySlipModal: React.FC<SalarySlipModalProps> = ({
               <p className="text-[11px] text-[#78726A] font-crafty">Directly transferred to registered bank account</p>
             </div>
             <div className="text-2xl font-bold font-mono text-[#709775]">
-              ${payroll.netSalary.toLocaleString()}
+              ₹{payroll.netSalary.toLocaleString()}
             </div>
           </div>
 

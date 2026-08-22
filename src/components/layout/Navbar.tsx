@@ -23,7 +23,8 @@ import {
 
 
 export const Navbar: React.FC = () => {
-  const { currentUser, logout, allEmployees } = useAuth();
+  const { currentUser, role, logout, allEmployees } = useAuth();
+  const isHR = role === 'HR' || currentUser?.role === 'HR';
   const navigate = useNavigate();
 
   const hrUser = allEmployees.find(e => e.role === 'HR');
@@ -191,19 +192,21 @@ export const Navbar: React.FC = () => {
             )}
           </NavLink>
 
-          <NavLink
-            to="/reports"
-            className={({ isActive }) =>
-              `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                isActive
-                  ? 'bg-[#2B2825] text-[#E07A5F] border border-[#E07A5F]/40 shadow-sm'
-                  : 'text-[#A39C95] hover:text-[#E8E3DD] hover:bg-[#24211F]'
-              }`
-            }
-          >
-            <FiBarChart2 className="w-4 h-4 text-[#709775]" />
-            <span>Reports & Analytics</span>
-          </NavLink>
+          {isHR && (
+            <NavLink
+              to="/reports"
+              className={({ isActive }) =>
+                `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  isActive
+                    ? 'bg-[#2B2825] text-[#E07A5F] border border-[#E07A5F]/40 shadow-sm'
+                    : 'text-[#A39C95] hover:text-[#E8E3DD] hover:bg-[#24211F]'
+                }`
+              }
+            >
+              <FiBarChart2 className="w-4 h-4 text-[#709775]" />
+              <span>Reports & Analytics</span>
+            </NavLink>
+          )}
 
         </nav>
       </div>

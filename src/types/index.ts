@@ -1,6 +1,6 @@
 export type UserRole = 'HR' | 'Employee';
 
-export type EmployeeStatus = 'present' | 'absent' | 'leave';
+export type EmployeeStatus = 'present' | 'absent' | 'leave' | 'half-day';
 
 export interface Employee {
   id: number;

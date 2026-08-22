@@ -331,6 +331,37 @@ func GetEmployees(c fiber.Ctx) error {
 	}
 
 	query.Find(&employees)
+
+	// Check today's attendance log for each employee to accurately set status (present, half-day, leave, absent)
+	todayStr := time.Now().Format("2006-01-02")
+	var todayAttendance []models.Attendance
+	database.DB.Where("date = ?", todayStr).Find(&todayAttendance)
+
+	attMap := make(map[string]models.Attendance)
+	for _, att := range todayAttendance {
+		attMap[att.EmployeeID] = att
+	}
+
+	for i := range employees {
+		empID := employees[i].EmployeeID
+		if att, exists := attMap[empID]; exists {
+			if att.Status == "Half-day" || att.Status == "half-day" {
+				employees[i].Status = "half-day"
+			} else if att.CheckIn != "" && att.CheckIn != "--:--" && att.CheckOut != "" && att.CheckOut != "--:--" {
+				inMins := parseTimeToMinutes(att.CheckIn)
+				outMins := parseTimeToMinutes(att.CheckOut)
+				if inMins > 0 && outMins > inMins {
+					diffMins := outMins - inMins
+					if diffMins <= 270 { // 4.5 hours or less (270 mins)
+						employees[i].Status = "half-day"
+						database.DB.Model(&models.User{}).Where("employee_id = ?", empID).Update("status", "half-day")
+						database.DB.Model(&models.Attendance{}).Where("id = ?", att.ID).Update("status", "Half-day")
+					}
+				}
+			}
+		}
+	}
+
 	return c.JSON(employees)
 }
 
@@ -904,6 +935,20 @@ func CheckOut(c fiber.Ctx) error {
 	}
 	workHours, extraHours := calculateWorkAndExtraHours(checkInStr, timeStr)
 
+	inMins := parseTimeToMinutes(checkInStr)
+	outMins := parseTimeToMinutes(timeStr)
+
+	attStatus := "Present"
+	userStatus := "absent"
+
+	if inMins > 0 && outMins > inMins {
+		diffMins := outMins - inMins
+		if diffMins <= 270 { // 4.5 hours or less (270 mins)
+			attStatus = "Half-day"
+			userStatus = "half-day"
+		}
+	}
+
 	if err != nil {
 		record = models.Attendance{
 			EmployeeID:   req.EmployeeID,
@@ -913,18 +958,18 @@ func CheckOut(c fiber.Ctx) error {
 			CheckOut:     timeStr,
 			WorkHours:    workHours,
 			ExtraHours:   extraHours,
-			Status:       "Present",
+			Status:       attStatus,
 		}
 		database.DB.Create(&record)
 	} else {
 		record.CheckOut = timeStr
 		record.WorkHours = workHours
 		record.ExtraHours = extraHours
-		record.Status = "Present"
+		record.Status = attStatus
 		database.DB.Save(&record)
 	}
 
-	user.Status = "absent"
+	user.Status = userStatus
 	database.DB.Save(&user)
 
 	return c.JSON(fiber.Map{
@@ -1362,13 +1407,28 @@ func GetReportsAnalytics(c fiber.Ctx) error {
 		totalMonthlyPayroll += p.NetSalary
 	}
 
+	var totalAttendanceCount int64
+	var presentAttendanceCount int64
+	database.DB.Model(&models.Attendance{}).Count(&totalAttendanceCount)
+	database.DB.Model(&models.Attendance{}).Where("status = ?", "Present").Count(&presentAttendanceCount)
+
+	attendanceRate := 0.0
+	if totalAttendanceCount > 0 {
+		attendanceRate = (float64(presentAttendanceCount) / float64(totalAttendanceCount)) * 100.0
+	} else if totalEmployees > 0 {
+		attendanceRate = (float64(presentCount) / float64(totalEmployees)) * 100.0
+	} else {
+		attendanceRate = 100.0
+	}
+	rateFormatted, _ := strconv.ParseFloat(fmt.Sprintf("%.1f", attendanceRate), 64)
+
 	return c.JSON(fiber.Map{
 		"totalEmployees":       totalEmployees,
 		"presentToday":         presentCount,
 		"onLeave":              leaveCount,
 		"pendingLeave":         pendingLeaveCount,
 		"totalMonthlyPayroll":  totalMonthlyPayroll,
-		"attendanceRate":       89.5,
+		"attendanceRate":       rateFormatted,
 		"workingDaysThisMonth": 22,
 	})
 }

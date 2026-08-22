@@ -223,6 +223,9 @@ export const EmployeesPage: React.FC = () => {
     }
   };
 
+  const [statusFilter, setStatusFilter] = useState('All');
+  const statusOptions = ['All', 'Present', 'Half-day', 'Leave', 'Absent'];
+
   const filteredEmployees = allEmployees.filter(emp => {
     const matchesSearch =
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -231,7 +234,14 @@ export const EmployeesPage: React.FC = () => {
 
     const matchesDept = departmentFilter === 'All' || emp.department === departmentFilter;
 
-    return matchesSearch && matchesDept;
+    const matchesStatus =
+      statusFilter === 'All' ||
+      (statusFilter === 'Present' && emp.status === 'present') ||
+      (statusFilter === 'Half-day' && (emp.status === 'half-day' || emp.status === 'Half-day')) ||
+      (statusFilter === 'Leave' && emp.status === 'leave') ||
+      (statusFilter === 'Absent' && emp.status === 'absent');
+
+    return matchesSearch && matchesDept && matchesStatus;
   });
 
   return (
@@ -275,39 +285,62 @@ export const EmployeesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Department Filters */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs font-semibold">
-          <span className="text-[#78726A] mr-2 shrink-0">Department:</span>
-          {departments.map(dept => (
-            <button
-              key={dept}
-              onClick={() => setDepartmentFilter(dept)}
-              className={`px-3.5 py-1.5 rounded-xl transition-all shrink-0 ${
-                departmentFilter === dept
-                  ? 'bg-[#E07A5F] text-white shadow-md'
-                  : 'bg-[#141312] text-[#A39C95] hover:text-[#E8E3DD] border border-[#332F2C]'
-              }`}
-            >
-              {dept}
-            </button>
-          ))}
+        {/* Department & Status Filters */}
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs font-semibold">
+            <span className="text-[#78726A] mr-2 shrink-0">Department:</span>
+            {departments.map(dept => (
+              <button
+                key={dept}
+                onClick={() => setDepartmentFilter(dept)}
+                className={`px-3.5 py-1.5 rounded-xl transition-all shrink-0 ${
+                  departmentFilter === dept
+                    ? 'bg-[#E07A5F] text-white shadow-md'
+                    : 'bg-[#141312] text-[#A39C95] hover:text-[#E8E3DD] border border-[#332F2C]'
+                }`}
+              >
+                {dept}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs font-semibold">
+            <span className="text-[#78726A] mr-2 shrink-0">Status Filter:</span>
+            {statusOptions.map(st => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3.5 py-1 rounded-xl transition-all shrink-0 ${
+                  statusFilter === st
+                    ? 'bg-[#709775] text-white font-bold shadow-md'
+                    : 'bg-[#141312] text-[#A39C95] hover:text-[#E8E3DD] border border-[#332F2C]'
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Roster Legend Bar */}
-      <div className="flex items-center space-x-6 text-xs font-mono px-2">
+      <div className="flex flex-wrap items-center gap-6 text-xs font-mono px-2">
         <span className="text-[#78726A] font-bold">Status Legend:</span>
         <div className="flex items-center space-x-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#709775] shadow-[0_0_6px_#709775]" />
-          <span className="text-[#A39C95]">Present (Checked In)</span>
+          <span className="text-[#A39C95]">Present</span>
+        </div>
+        <div className="flex items-center space-x-1.5">
+          <span className="px-1.5 py-0.5 rounded bg-[#F4A261] text-[#141312] text-[10px] font-extrabold font-mono">Half-day</span>
+          <span className="text-[#A39C95]">Half-day (Worked ≤ 4.5h)</span>
         </div>
         <div className="flex items-center space-x-1.5">
           <Plane className="w-3.5 h-3.5 text-[#E07A5F]" />
-          <span className="text-[#A39C95]">On Leave</span>
+          <span className="text-[#A39C95]">Leave</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#F4A261]" />
-          <span className="text-[#A39C95]">Absent (Checked Out)</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#E06C68]" />
+          <span className="text-[#A39C95]">Absent</span>
         </div>
       </div>
 
@@ -315,6 +348,7 @@ export const EmployeesPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEmployees.map(emp => {
           const isPresent = emp.status === 'present';
+          const isHalfDay = emp.status === 'half-day' || emp.status === 'Half-day';
           const isOnLeave = emp.status === 'leave';
           const canFire = isHR && emp.employeeId !== currentUser?.employeeId;
 
@@ -327,11 +361,15 @@ export const EmployeesPage: React.FC = () => {
                 {/* Top-Right Corner Status Indicator Icon */}
                 <div className="absolute top-4 right-4" title={`Status: ${emp.status}`}>
                   {isPresent ? (
-                    <span className="w-3 h-3 rounded-full bg-[#709775] block shadow-[0_0_8px_#709775]" />
+                    <span className="w-3 h-3 rounded-full bg-[#709775] block shadow-[0_0_8px_#709775]" title="Status: Present" />
+                  ) : isHalfDay ? (
+                    <span className="px-2 py-0.5 rounded bg-[#F4A261] text-[#141312] text-[10px] font-extrabold block shadow-sm font-mono">
+                      Half-day
+                    </span>
                   ) : isOnLeave ? (
-                    <Plane className="w-4 h-4 text-[#E07A5F]" />
+                    <Plane className="w-4 h-4 text-[#E07A5F]" title="Status: On Leave" />
                   ) : (
-                    <span className="w-3 h-3 rounded-full bg-[#F4A261] block" />
+                    <span className="w-3 h-3 rounded-full bg-[#E06C68] block" title="Status: Absent" />
                   )}
                 </div>
 
