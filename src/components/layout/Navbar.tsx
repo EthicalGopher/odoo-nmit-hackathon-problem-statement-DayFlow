@@ -117,7 +117,7 @@ export const Navbar: React.FC = () => {
     <header className="h-20 bg-[#1C1A19] border-b border-[#332F2C] px-6 md:px-8 flex items-center justify-between sticky top-0 z-40 select-none shadow-xl font-carme">
       {/* Left: Company Logo & Nav Links */}
       <div className="flex items-center space-x-8">
-        {/* Company Logo */}
+        {/* Company Logo & Company Name */}
         <NavLink to="/employees" className="flex items-center space-x-3 group">
           <img
             src={companyLogo}
@@ -127,6 +127,9 @@ export const Navbar: React.FC = () => {
               (e.currentTarget as HTMLImageElement).src = '/logo.png';
             }}
           />
+          <span className="font-crimson text-xl font-bold tracking-tight text-[#E8E3DD] hidden sm:inline group-hover:text-[#E07A5F] transition-colors">
+            {currentUser?.companyName || hrUser?.companyName || 'Dayflow'}
+          </span>
         </NavLink>
 
         {/* Navbar Items */}

@@ -13,6 +13,7 @@ import {
   FiArrowRight,
   FiBriefcase,
   FiUploadCloud,
+  FiKey,
 } from 'react-icons/fi';
 
 export const LoginPage: React.FC = () => {
@@ -32,6 +33,7 @@ export const LoginPage: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [gmailAppPassword, setGmailAppPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -85,6 +87,7 @@ export const LoginPage: React.FC = () => {
         phone,
         password,
         role: 'HR',
+        gmailAppPassword: gmailAppPassword || undefined,
       });
 
       const assignedId = res.user?.employeeId || 'OIALME20260001';
@@ -281,6 +284,25 @@ export const LoginPage: React.FC = () => {
                   className="w-full bg-[#141312] border border-[#332F2C] rounded-xl pl-9 pr-4 py-2 text-xs text-[#E8E3DD] placeholder-[#78726A] focus:outline-none focus:border-[#E07A5F]"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#709775] mb-1 flex items-center justify-between">
+                <span>Gmail App Password (Optional - For Live Inbox Emails) :-</span>
+              </label>
+              <div className="relative">
+                <FiKey className="w-4 h-4 text-[#709775] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  value={gmailAppPassword}
+                  onChange={e => setGmailAppPassword(e.target.value)}
+                  placeholder="e.g. abcd efgh ijkl mnop"
+                  className="w-full bg-[#141312] border border-[#332F2C] rounded-xl pl-9 pr-4 py-2 text-xs text-[#E8E3DD] placeholder-[#78726A] focus:outline-none focus:border-[#709775]"
+                />
+              </div>
+              <span className="text-[10px] text-[#78726A] block mt-0.5 font-mono">
+                Generate at myaccount.google.com/apppasswords to send real emails to inboxes.
+              </span>
             </div>
 
             <div>
